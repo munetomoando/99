@@ -244,6 +244,7 @@
   <div id="gameOver">じかんぎれ！</div>
   <div id="mistakesList"></div>
   <button class="end-btn" id="restart" onclick="location.reload()">もういちど あそぶ</button>
+  <button class="end-btn" id="showHeatmapBtn" onclick="showHeatmapFromResult()">九九ひょう（にがてチェック）</button>
   <button class="end-btn" id="resetData" onclick="resetMistakeData()">まちがえのきろくをリセット</button>
 
   <!-- ヒートマップ -->
@@ -872,6 +873,7 @@
       document.getElementById("gameOver").textContent = message;
       document.getElementById("gameOver").style.display = "block";
       document.getElementById("restart").style.display = "inline-block";
+      document.getElementById("showHeatmapBtn").style.display = "inline-block";
       document.getElementById("resetData").style.display = "inline-block";
       showMistakes();
       playSound('fanfare');
@@ -903,7 +905,32 @@
 
     function hideHeatmap() {
       document.getElementById("heatmapSection").style.display = "none";
-      document.getElementById("modeSelection").style.display = "block";
+      // トップ画面から開いた場合はモード選択に戻る、結果画面から開いた場合は結果画面に戻る
+      if (heatmapFromResult) {
+        heatmapFromResult = false;
+        document.getElementById("gameOver").style.display = "block";
+        document.getElementById("mistakesList").style.display = "block";
+        document.getElementById("restart").style.display = "inline-block";
+        document.getElementById("showHeatmapBtn").style.display = "inline-block";
+        document.getElementById("resetData").style.display = "inline-block";
+        document.getElementById("city").style.display = "block";
+      } else {
+        document.getElementById("modeSelection").style.display = "block";
+      }
+    }
+
+    let heatmapFromResult = false;
+
+    function showHeatmapFromResult() {
+      heatmapFromResult = true;
+      document.getElementById("gameOver").style.display = "none";
+      document.getElementById("mistakesList").style.display = "none";
+      document.getElementById("restart").style.display = "none";
+      document.getElementById("showHeatmapBtn").style.display = "none";
+      document.getElementById("resetData").style.display = "none";
+      document.getElementById("city").style.display = "none";
+      document.getElementById("heatmapSection").style.display = "block";
+      renderHeatmap();
     }
 
     function renderHeatmap() {
