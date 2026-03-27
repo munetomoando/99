@@ -261,37 +261,67 @@
   </div>
 
   <script>
-    // ===== 音声プリロード =====
+    // ===== 音声 =====
+    // mp3ファイルがあればそちらを優先、なければWeb Audio APIで合成音にフォールバック
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const sounds = {};
+    const loadedAudioFiles = {}; // name -> Audio (読み込み成功したもののみ)
 
-    function createTone(frequency, duration, type = 'sine', gainValue = 0.3) {
-      return { frequency, duration, type, gainValue };
-    }
+    // mp3ファイルのプリロード
+    ['correct', 'wrong', 'fanfare'].forEach(name => {
+      const audio = new Audio(`${name}.mp3`);
+      audio.preload = 'auto';
+      audio.addEventListener('canplaythrough', () => { loadedAudioFiles[name] = audio; }, { once: true });
+      audio.addEventListener('error', () => { /* mp3なし → 合成音にフォールバック */ });
+      audio.load();
+    });
 
-    // 合成音で正解・不正解・ファンファーレを生成
-    const soundDefs = {
+    // 合成音の定義（フォールバック用）
+    // correct: ピンポーン（高い2音の和音）
+    // wrong: ブッ（短い低音ブザー）
+    // fanfare: ファンファーレ（上昇する4音）
+    const synthDefs = {
       correct: [
-        { freq: 523.25, start: 0, dur: 0.1, type: 'sine', gain: 0.3 },
-        { freq: 659.25, start: 0.08, dur: 0.15, type: 'sine', gain: 0.3 },
+        // ピン（高めのサイン波）
+        { freq: 880, start: 0, dur: 0.25, type: 'sine', gain: 0.3 },
+        // ポーン（少し低いサイン波、重ねて響かせる）
+        { freq: 1108.73, start: 0.08, dur: 0.4, type: 'sine', gain: 0.25 },
+        // 余韻
+        { freq: 880, start: 0.08, dur: 0.4, type: 'sine', gain: 0.15 },
       ],
       wrong: [
-        { freq: 200, start: 0, dur: 0.15, type: 'square', gain: 0.15 },
-        { freq: 180, start: 0.12, dur: 0.2, type: 'square', gain: 0.12 },
+        // ブッ（短い低音ブザー）
+        { freq: 150, start: 0, dur: 0.2, type: 'square', gain: 0.18 },
+        { freq: 120, start: 0, dur: 0.2, type: 'sawtooth', gain: 0.08 },
       ],
       fanfare: [
-        { freq: 523.25, start: 0, dur: 0.15, type: 'sine', gain: 0.25 },
-        { freq: 659.25, start: 0.15, dur: 0.15, type: 'sine', gain: 0.25 },
-        { freq: 783.99, start: 0.3, dur: 0.15, type: 'sine', gain: 0.25 },
-        { freq: 1046.50, start: 0.45, dur: 0.4, type: 'sine', gain: 0.3 },
+        // ドー
+        { freq: 523.25, start: 0, dur: 0.2, type: 'sine', gain: 0.25 },
+        { freq: 523.25, start: 0, dur: 0.2, type: 'triangle', gain: 0.1 },
+        // ミー
+        { freq: 659.25, start: 0.2, dur: 0.2, type: 'sine', gain: 0.25 },
+        { freq: 659.25, start: 0.2, dur: 0.2, type: 'triangle', gain: 0.1 },
+        // ソー
+        { freq: 783.99, start: 0.4, dur: 0.2, type: 'sine', gain: 0.25 },
+        { freq: 783.99, start: 0.4, dur: 0.2, type: 'triangle', gain: 0.1 },
+        // ドー（高い、長め）
+        { freq: 1046.50, start: 0.6, dur: 0.5, type: 'sine', gain: 0.3 },
+        { freq: 1046.50, start: 0.6, dur: 0.5, type: 'triangle', gain: 0.12 },
       ]
     };
 
     function playSound(name) {
-      const defs = soundDefs[name];
-      if (!defs) return;
-      // ユーザー操作後にAudioContextを再開
       if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      // mp3ファイルが読み込めていればそちらを再生
+      if (loadedAudioFiles[name]) {
+        const audio = loadedAudioFiles[name].cloneNode();
+        audio.play().catch(() => {});
+        return;
+      }
+
+      // 合成音で再生
+      const defs = synthDefs[name];
+      if (!defs) return;
       defs.forEach(d => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
