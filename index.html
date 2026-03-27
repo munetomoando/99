@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>九九をおぼえて、まちをつくろうゲーム</title>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      box-sizing: border-box;
+    }
+    body {
+      text-align: center;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      background-color: #ffebf0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-y: auto;
+      margin: 0;
+      padding: 10px 0;
+    }
+    h1 { color: #ff4081; font-size: 1.5em; margin: 5px 0; }
+
+    /* モード選択 */
+    #modeSelection {
+      margin-bottom: 10px;
+    }
+    #modeSelection h2 {
+      font-size: 1.3em;
+      color: #ff4081;
+      margin-bottom: 10px;
+    }
+    .mode-btn {
+      font-size: 1.1em;
+      padding: 12px 20px;
+      border: 2px solid #ff4081;
+      border-radius: 10px;
+      background-color: white;
+      color: #ff4081;
+      cursor: pointer;
+      margin: 5px;
+      transition: 0.3s;
+    }
+    .mode-btn:hover, .mode-btn:focus {
+      background-color: #ff80ab;
+      color: white;
+    }
+
+    #timeButtons {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    #timer, #score { font-size: 1.2em; color: #ff4081; }
+    #question {
+      font-size: 1.8em;
+      background: #ff80ab;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      display: none;
+      margin: 8px;
+    }
+
+    /* フィードバック表示 */
+    #feedback {
+      font-size: 1.3em;
+      font-weight: bold;
+      min-height: 1.6em;
+      margin: 4px 0;
+      transition: opacity 0.3s;
+    }
+    #feedback.correct { color: #4caf50; }
+    #feedback.wrong { color: #f44336; }
+
+    #options {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 5px 0;
+    }
+    .option {
+      display: inline-block;
+      padding: 10px 18px;
+      border: 2px solid #ff4081;
+      cursor: pointer;
+      font-size: 1.5em;
+      background: white;
+      color: #333;
+      border-radius: 10px;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .option:active, .option.pressed {
+      transform: scale(0.95);
+    }
+    .option.correct-highlight {
+      background-color: #4caf50;
+      color: white;
+      border-color: #388e3c;
+    }
+    .option.wrong-highlight {
+      background-color: #f44336;
+      color: white;
+      border-color: #d32f2f;
+    }
+    .option:focus { outline: 2px solid #ff4081; outline-offset: 2px; }
+
+    #gameOver, #mistakesList {
+      display: none;
+      font-size: 1.2em;
+      color: #ff4081;
+      margin-top: 10px;
+      padding: 0 10px;
+    }
+    .end-btn {
+      display: none;
+      font-size: 1.1em;
+      padding: 10px 15px;
+      border: 2px solid #ff4081;
+      background-color: white;
+      color: #ff4081;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 8px;
+      font-family: inherit;
+    }
+    .end-btn:hover, .end-btn:focus { background-color: #ff80ab; color: white; }
+
+    /* まち表示 */
+    #city {
+      width: 80vw;
+      height: 30vh;
+      max-width: 700px;
+      max-height: 300px;
+      margin: 5px auto;
+    }
+    #city svg {
+      width: 100%;
+      height: 100%;
+    }
+    #city img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* ヒートマップ */
+    #heatmapSection {
+      display: none;
+      margin: 15px auto;
+      padding: 10px;
+    }
+    #heatmapSection h3 {
+      color: #ff4081;
+      margin-bottom: 8px;
+    }
+    .heatmap-table {
+      border-collapse: collapse;
+      margin: 0 auto;
+    }
+    .heatmap-table th {
+      background: #ff80ab;
+      color: white;
+      padding: 4px 8px;
+      font-size: 0.9em;
+      min-width: 32px;
+    }
+    .heatmap-table td {
+      padding: 4px;
+      text-align: center;
+      font-size: 0.8em;
+      border: 1px solid #fce4ec;
+      min-width: 32px;
+      cursor: default;
+    }
+    .heatmap-table .row-header {
+      background: #ff80ab;
+      color: white;
+      font-weight: bold;
+    }
+    .heatmap-legend {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 0.85em;
+      color: #666;
+    }
+    .legend-box {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      border: 1px solid #ccc;
+      vertical-align: middle;
+    }
+
+    /* タイムアタック */
+    #taProgress {
+      font-size: 1.1em;
+      color: #ff4081;
+    }
+  </style>
+</head>
+<body>
+  <h1>九九をおぼえて、まちをつくろうゲーム</h1>
+
+  <!-- モード選択 -->
+  <div id="modeSelection">
+    <h2>あそびかたをえらぶ</h2>
+    <div style="margin-bottom:8px; font-size:1.1em; color:#ff4081;">じかんせいげんモード</div>
+    <div id="timeButtons">
+      <button class="mode-btn" onclick="startNormalGame(30)">30びょう</button>
+      <button class="mode-btn" onclick="startNormalGame(60)">60びょう</button>
+      <button class="mode-btn" onclick="startNormalGame(120)">120びょう</button>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="mode-btn" onclick="startTimeAttack()">タイムアタックモード</button>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="mode-btn" onclick="showHeatmap()">九九ひょう（にがてチェック）</button>
+    </div>
+  </div>
+
+  <div id="timer" style="display:none">のこりじかん: <span id="timeLeft">0</span>びょう</div>
+  <div id="taProgress" style="display:none">もんだい: <span id="taCount">0</span> / 81</div>
+  <div id="taTimer" style="display:none; font-size:1.2em; color:#ff4081;">タイム: <span id="taTime">0.0</span>びょう</div>
+  <div id="score" style="display:none">スコア: <span id="scoreValue">0</span></div>
+  <div id="question">ここに もんだい が ひょうじ されます</div>
+  <div id="feedback"></div>
+  <div id="options" role="group" aria-label="こたえのせんたくし"></div>
+  <div id="city"></div>
+  <button class="end-btn" id="quitBtn" onclick="quitGame()">やめる</button>
+  <div id="gameOver">じかんぎれ！</div>
+  <div id="mistakesList"></div>
+  <button class="end-btn" id="restart" onclick="location.reload()">もういちど あそぶ</button>
+  <button class="end-btn" id="resetData" onclick="resetMistakeData()">まちがえのきろくをリセット</button>
+
+  <!-- ヒートマップ -->
+  <div id="heatmapSection">
+    <h3>九九 にがてひょう</h3>
+    <div id="heatmapContainer"></div>
+    <div class="heatmap-legend">
+      <span class="legend-box" style="background:#e8f5e9"></span> まちがえなし
+      <span class="legend-box" style="background:#fff9c4"></span> すこし
+      <span class="legend-box" style="background:#ffcc80"></span> ちゅうい
+      <span class="legend-box" style="background:#ef9a9a"></span> にがて
+    </div>
+    <br>
+    <button class="mode-btn" onclick="hideHeatmap()">もどる</button>
+  </div>
+
+  <script>
+    // ===== 音声プリロード =====
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const sounds = {};
+
+    function createTone(frequency, duration, type = 'sine', gainValue = 0.3) {
+      return { frequency, duration, type, gainValue };
+    }
+
+    // 合成音で正解・不正解・ファンファーレを生成
+    const soundDefs = {
+      correct: [
+        { freq: 523.25, start: 0, dur: 0.1, type: 'sine', gain: 0.3 },
+        { freq: 659.25, start: 0.08, dur: 0.15, type: 'sine', gain: 0.3 },
+      ],
+      wrong: [
+        { freq: 200, start: 0, dur: 0.15, type: 'square', gain: 0.15 },
+        { freq: 180, start: 0.12, dur: 0.2, type: 'square', gain: 0.12 },
+      ],
+      fanfare: [
+        { freq: 523.25, start: 0, dur: 0.15, type: 'sine', gain: 0.25 },
+        { freq: 659.25, start: 0.15, dur: 0.15, type: 'sine', gain: 0.25 },
+        { freq: 783.99, start: 0.3, dur: 0.15, type: 'sine', gain: 0.25 },
+        { freq: 1046.50, start: 0.45, dur: 0.4, type: 'sine', gain: 0.3 },
+      ]
+    };
+
+    function playSound(name) {
+      const defs = soundDefs[name];
+      if (!defs) return;
+      // ユーザー操作後にAudioContextを再開
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      defs.forEach(d => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = d.type;
+        osc.frequency.value = d.freq;
+        gain.gain.setValueAtTime(d.gain, audioCtx.currentTime + d.start);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d.start + d.dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + d.start);
+        osc.stop(audioCtx.currentTime + d.start + d.dur + 0.05);
+      });
+    }
+
+    // ===== ゲーム状態 =====
+    let timeLeft;
+    let timerInterval;
+    let correctCount = 0;
+    let cityStage = 1;
+    let previousProblem = { num1: null, num2: null };
+    let mistakeCounts = JSON.parse(localStorage.getItem("mistakeCounts")) || {};
+    let gameEnded = false;
+    let gameMode = null; // 'normal' or 'timeattack'
+    let waitingForNext = false; // フィードバック表示中は入力を無視
+
+    // タイムアタック用
+    let taProblems = [];
+    let taSolved = 0;
+    let taStartTime = 0;
+    let taTimerInterval;
+
+    // ===== PNG画像プリロード =====
+    // 各ステージのPNG画像が利用可能かチェックし、使えるものはキャッシュ
+    const cityImages = {}; // stage -> Image (読み込み成功したもののみ)
+    (function preloadCityImages() {
+      for (let s = 1; s <= 10; s++) {
+        const img = new Image();
+        const stage = s;
+        img.onload = function() { cityImages[stage] = img; refreshCity(); };
+        img.onerror = function() { /* PNG無し → SVGフォールバック */ };
+        img.src = `${String(s).padStart(3, '0')}.png`;
+      }
+    })();
+
+    // 現在のステージを再描画（プリロード完了時に呼ばれる）
+    function refreshCity() {
+      drawCity(cityStage);
+    }
+
+    // ===== 通常モード =====
+    function startNormalGame(time) {
+      gameMode = 'normal';
+      timeLeft = time;
+      gameEnded = false;
+      document.getElementById("modeSelection").style.display = "none";
+      document.getElementById("timer").style.display = "block";
+      document.getElementById("score").style.display = "block";
+      document.getElementById("question").style.display = "inline-block";
+      document.getElementById("quitBtn").style.display = "inline-block";
+      document.getElementById("timeLeft").textContent = timeLeft;
+      drawCity(cityStage);
+      generateQuestion();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+      if (gameEnded) return;
+      timeLeft--;
+      document.getElementById("timeLeft").textContent = timeLeft;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame("じかんぎれ！");
+      }
+    }
+
+    // ===== タイムアタックモード =====
+    function startTimeAttack() {
+      gameMode = 'timeattack';
+      gameEnded = false;
+      document.getElementById("modeSelection").style.display = "none";
+      document.getElementById("quitBtn").style.display = "inline-block";
+      // 全81問をシャッフルして用意
+      taProblems = [];
+      for (let i = 1; i <= 9; i++) {
+        for (let j = 1; j <= 9; j++) {
+          taProblems.push({ num1: i, num2: j });
+        }
+      }
+      // Fisher-Yatesシャッフル
+      for (let i = taProblems.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [taProblems[i], taProblems[j]] = [taProblems[j], taProblems[i]];
+      }
+      taSolved = 0;
+
+      document.getElementById("taProgress").style.display = "block";
+      document.getElementById("taTimer").style.display = "block";
+      document.getElementById("question").style.display = "inline-block";
+      document.getElementById("taCount").textContent = "0";
+      drawCity(cityStage);
+
+      taStartTime = performance.now();
+      taTimerInterval = setInterval(() => {
+        const elapsed = ((performance.now() - taStartTime) / 1000).toFixed(1);
+        document.getElementById("taTime").textContent = elapsed;
+      }, 100);
+
+      generateTAQuestion();
+    }
+
+    function generateTAQuestion() {
+      if (gameEnded) return;
+      const problem = taProblems[taSolved];
+      const correctAnswer = problem.num1 * problem.num2;
+      previousProblem = { num1: problem.num1, num2: problem.num2 };
+
+      document.getElementById("question").textContent = `${problem.num1} × ${problem.num2} = ?`;
+      renderOptions(correctAnswer);
+    }
+
+    // ===== 問題生成（通常モード） =====
+    function generateQuestion() {
+      if (gameEnded) return;
+
+      const problems = [];
+      const weights = [];
+      for (let i = 1; i <= 9; i++) {
+        for (let j = 1; j <= 9; j++) {
+          const key = `${i} × ${j}`;
+          const weight = (mistakeCounts[key] || 0) + 1;
+          problems.push({ num1: i, num2: j });
+          weights.push(weight);
+        }
+      }
+
+      let selectedProblem;
+      let attempts = 0;
+      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+      while (attempts < 10) {
+        let r = Math.random() * totalWeight;
+        let index = 0;
+        for (let k = 0; k < weights.length; k++) {
+          r -= weights[k];
+          if (r <= 0) { index = k; break; }
+        }
+        const candidate = problems[index];
+        if (candidate.num1 === previousProblem.num1 && candidate.num2 === previousProblem.num2) {
+          attempts++;
+          continue;
+        }
+        selectedProblem = candidate;
+        break;
+      }
+      if (!selectedProblem) {
+        do {
+          const randomIndex = Math.floor(Math.random() * problems.length);
+          selectedProblem = problems[randomIndex];
+        } while (selectedProblem.num1 === previousProblem.num1 && selectedProblem.num2 === previousProblem.num2);
+      }
+
+      previousProblem = { num1: selectedProblem.num1, num2: selectedProblem.num2 };
+      const correctAnswer = selectedProblem.num1 * selectedProblem.num2;
+      document.getElementById("question").textContent = `${selectedProblem.num1} × ${selectedProblem.num2} = ?`;
+      renderOptions(correctAnswer);
+    }
+
+    // ===== 選択肢生成（改善版：間違えやすい選択肢） =====
+    function generateDistractors(correct, num1, num2) {
+      const distractors = new Set();
+
+      // 間違えやすい候補を作成
+      const candidates = [];
+      // ±1ずれた段の答え
+      if (num2 > 1) candidates.push(num1 * (num2 - 1));
+      if (num2 < 9) candidates.push(num1 * (num2 + 1));
+      if (num1 > 1) candidates.push((num1 - 1) * num2);
+      if (num1 < 9) candidates.push((num1 + 1) * num2);
+      // 数字の入れ替え（例: 24→42）
+      if (correct >= 10) {
+        const reversed = parseInt(String(correct).split('').reverse().join(''));
+        if (reversed !== correct && reversed > 0 && reversed <= 81) candidates.push(reversed);
+      }
+      // ±1, ±2
+      candidates.push(correct + 1, correct - 1, correct + 2, correct - 2);
+      // 同じ段の近い答え
+      for (let k = 1; k <= 9; k++) {
+        if (k !== num2) candidates.push(num1 * k);
+        if (k !== num1) candidates.push(k * num2);
+      }
+
+      // 候補をシャッフルして重複・正解・不正値を除外
+      const shuffled = candidates
+        .filter(v => v > 0 && v <= 81 && v !== correct)
+        .sort(() => Math.random() - 0.5);
+
+      for (const v of shuffled) {
+        if (distractors.size >= 3) break;
+        distractors.add(v);
+      }
+
+      // 足りなければランダム補充
+      while (distractors.size < 3) {
+        const v = (Math.floor(Math.random() * 9) + 1) * (Math.floor(Math.random() * 9) + 1);
+        if (v !== correct) distractors.add(v);
+      }
+
+      return [...distractors].slice(0, 3);
+    }
+
+    function renderOptions(correctAnswer) {
+      const distractors = generateDistractors(correctAnswer, previousProblem.num1, previousProblem.num2);
+      const options = [correctAnswer, ...distractors].sort(() => Math.random() - 0.5);
+
+      const optionsDiv = document.getElementById("options");
+      optionsDiv.innerHTML = "";
+      document.getElementById("feedback").textContent = "";
+      document.getElementById("feedback").className = "";
+
+      options.forEach(option => {
+        const button = document.createElement("button");
+        button.className = "option";
+        button.textContent = option;
+        button.setAttribute("aria-label", `こたえ ${option}`);
+        button.onclick = () => handleAnswer(option, correctAnswer, optionsDiv);
+        optionsDiv.appendChild(button);
+      });
+    }
+
+    // ===== 回答処理（フィードバック付き） =====
+    function handleAnswer(selected, correct, optionsDiv) {
+      if (gameEnded || waitingForNext) return;
+
+      const feedbackEl = document.getElementById("feedback");
+      const buttons = optionsDiv.querySelectorAll(".option");
+
+      // 全ボタンを無効化
+      waitingForNext = true;
+      buttons.forEach(btn => { btn.disabled = true; });
+
+      if (selected === correct) {
+        // 正解
+        playSound('correct');
+        buttons.forEach(btn => {
+          if (parseInt(btn.textContent) === correct) btn.classList.add("correct-highlight");
+        });
+        feedbackEl.textContent = "⭕ せいかい！";
+        feedbackEl.className = "correct";
+
+        if (gameMode === 'normal') {
+          correctCount++;
+          document.getElementById("scoreValue").textContent = correctCount;
+          if (correctCount >= 30) {
+            setTimeout(() => endGame("おめでとう！"), 400);
+            return;
+          }
+          if (correctCount % 3 === 0 && cityStage < 10) {
+            cityStage++;
+            drawCity(cityStage);
+          }
+        } else if (gameMode === 'timeattack') {
+          taSolved++;
+          document.getElementById("taCount").textContent = taSolved;
+          // タイムアタックでも街を成長させる（9問ごと）
+          const newStage = Math.min(10, Math.floor(taSolved / 9) + 1);
+          if (newStage !== cityStage) {
+            cityStage = newStage;
+            drawCity(cityStage);
+          }
+          if (taSolved >= 81) {
+            setTimeout(() => {
+              clearInterval(taTimerInterval);
+              const elapsed = ((performance.now() - taStartTime) / 1000).toFixed(1);
+              endGame(`クリア！タイム: ${elapsed}びょう`);
+            }, 400);
+            return;
+          }
+        }
+
+        setTimeout(() => {
+          waitingForNext = false;
+          if (gameMode === 'normal') generateQuestion();
+          else generateTAQuestion();
+        }, 400);
+
+      } else {
+        // 不正解
+        playSound('wrong');
+        buttons.forEach(btn => {
+          const val = parseInt(btn.textContent);
+          if (val === selected) btn.classList.add("wrong-highlight");
+          if (val === correct) btn.classList.add("correct-highlight");
+        });
+        feedbackEl.textContent = `❌ ざんねん… こたえは ${correct}`;
+        feedbackEl.className = "wrong";
+
+        const key = `${previousProblem.num1} × ${previousProblem.num2}`;
+        mistakeCounts[key] = (mistakeCounts[key] || 0) + 1;
+        localStorage.setItem("mistakeCounts", JSON.stringify(mistakeCounts));
+
+        if (gameMode === 'normal' && cityStage > 1) {
+          cityStage--;
+          drawCity(cityStage);
+        }
+
+        setTimeout(() => {
+          waitingForNext = false;
+          if (gameMode === 'normal') generateQuestion();
+          else generateTAQuestion();
+        }, 1200);
+      }
+    }
+
+    // ===== まち描画（SVG生成） =====
+    function drawCity(stage) {
+      const cityDiv = document.getElementById("city");
+
+      // PNG画像が利用可能ならそちらを使う
+      if (cityImages[stage]) {
+        cityDiv.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = cityImages[stage].src;
+        img.alt = `まちのようす ステージ${stage}`;
+        cityDiv.appendChild(img);
+        return;
+      }
+
+      // PNG画像がない場合はSVGで描画
+      const w = 700, h = 300;
+      let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+
+      // 空のグラデーション（時間帯で変化）
+      svg += `<defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#87CEEB"/>
+          <stop offset="100%" stop-color="#E0F7FA"/>
+        </linearGradient>
+      </defs>`;
+      svg += `<rect width="${w}" height="${h}" fill="url(#sky)"/>`;
+
+      // 太陽
+      svg += `<circle cx="600" cy="50" r="30" fill="#FFD54F"/>`;
+      // 太陽の光線
+      for (let a = 0; a < 360; a += 45) {
+        const rad = a * Math.PI / 180;
+        const x1 = 600 + Math.cos(rad) * 35;
+        const y1 = 50 + Math.sin(rad) * 35;
+        const x2 = 600 + Math.cos(rad) * 48;
+        const y2 = 50 + Math.sin(rad) * 48;
+        svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#FFD54F" stroke-width="3" stroke-linecap="round"/>`;
+      }
+
+      // 雲（ステージ2+）
+      if (stage >= 2) {
+        svg += drawCloud(100, 40, 1);
+        svg += drawCloud(350, 60, 0.8);
+      }
+      if (stage >= 5) {
+        svg += drawCloud(500, 30, 0.7);
+      }
+
+      // 地面
+      svg += `<rect x="0" y="230" width="${w}" height="70" fill="#81C784"/>`;
+      // 道路
+      svg += `<rect x="0" y="250" width="${w}" height="25" fill="#9E9E9E"/>`;
+      svg += `<line x1="0" y1="262" x2="${w}" y2="262" stroke="#FFF" stroke-width="2" stroke-dasharray="20,15"/>`;
+
+      // 建物をステージに応じて追加
+      const buildings = [
+        // stage 1: 小さな家
+        { x: 300, w: 50, h: 50, color: '#FFAB91', roof: '#E64A19', type: 'house' },
+        // stage 2: もう一軒
+        { x: 100, w: 55, h: 55, color: '#CE93D8', roof: '#7B1FA2', type: 'house' },
+        // stage 3: お店
+        { x: 480, w: 60, h: 60, color: '#80DEEA', roof: '#00838F', type: 'shop' },
+        // stage 4: アパート
+        { x: 200, w: 50, h: 80, color: '#FFCC80', roof: '#EF6C00', type: 'apartment' },
+        // stage 5: 学校
+        { x: 560, w: 80, h: 70, color: '#A5D6A7', roof: '#2E7D32', type: 'school' },
+        // stage 6: ビル
+        { x: 50, w: 45, h: 100, color: '#90CAF9', roof: '#1565C0', type: 'building' },
+        // stage 7: 公園の木
+        { x: 400, w: 0, h: 0, color: '#66BB6A', roof: '#33691E', type: 'park' },
+        // stage 8: 大きなビル
+        { x: 140, w: 50, h: 120, color: '#B0BEC5', roof: '#37474F', type: 'building' },
+        // stage 9: タワー
+        { x: 340, w: 35, h: 140, color: '#EF9A9A', roof: '#C62828', type: 'tower' },
+        // stage 10: お城
+        { x: 430, w: 90, h: 110, color: '#FFF59D', roof: '#F9A825', type: 'castle' },
+      ];
+
+      for (let i = 0; i < Math.min(stage, buildings.length); i++) {
+        svg += drawBuilding(buildings[i]);
+      }
+
+      // 木を散りばめる（ステージに応じて）
+      if (stage >= 3) svg += drawTree(20, 230);
+      if (stage >= 4) svg += drawTree(250, 228);
+      if (stage >= 6) svg += drawTree(510, 232);
+      if (stage >= 8) svg += drawTree(650, 228);
+
+      svg += `</svg>`;
+      cityDiv.innerHTML = svg;
+    }
+
+    function drawCloud(cx, cy, scale) {
+      return `<g transform="translate(${cx},${cy}) scale(${scale})">
+        <ellipse cx="0" cy="0" rx="40" ry="20" fill="white" opacity="0.9"/>
+        <ellipse cx="-25" cy="5" rx="25" ry="15" fill="white" opacity="0.9"/>
+        <ellipse cx="25" cy="5" rx="30" ry="18" fill="white" opacity="0.9"/>
+      </g>`;
+    }
+
+    function drawTree(x, groundY) {
+      const trunkH = 25;
+      return `<rect x="${x-3}" y="${groundY-trunkH}" width="6" height="${trunkH}" fill="#795548"/>
+        <circle cx="${x}" cy="${groundY-trunkH-12}" r="16" fill="#66BB6A"/>
+        <circle cx="${x-10}" cy="${groundY-trunkH-5}" r="12" fill="#81C784"/>
+        <circle cx="${x+10}" cy="${groundY-trunkH-5}" r="12" fill="#81C784"/>`;
+    }
+
+    function drawBuilding(b) {
+      const groundY = 250;
+      let svg = '';
+
+      if (b.type === 'house') {
+        const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
+        // 屋根
+        svg += `<polygon points="${bx-5},${by} ${bx+bw/2},${by-25} ${bx+bw+5},${by}" fill="${b.roof}"/>`;
+        // ドア
+        svg += `<rect x="${bx+bw/2-7}" y="${by+bh-22}" width="14" height="22" fill="#5D4037" rx="2"/>`;
+        // 窓
+        svg += `<rect x="${bx+6}" y="${by+10}" width="12" height="12" fill="#BBDEFB" rx="1"/>`;
+        svg += `<rect x="${bx+bw-18}" y="${by+10}" width="12" height="12" fill="#BBDEFB" rx="1"/>`;
+      }
+      else if (b.type === 'shop') {
+        const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="12" fill="${b.roof}"/>`;
+        // 看板
+        svg += `<rect x="${bx+5}" y="${by+14}" width="${bw-10}" height="14" fill="white" rx="2"/>`;
+        svg += `<text x="${bx+bw/2}" y="${by+25}" text-anchor="middle" font-size="9" fill="${b.roof}">SHOP</text>`;
+        // 大きな窓
+        svg += `<rect x="${bx+5}" y="${by+32}" width="${bw-10}" height="20" fill="#BBDEFB" rx="1"/>`;
+      }
+      else if (b.type === 'apartment' || b.type === 'building') {
+        const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="6" fill="${b.roof}"/>`;
+        // 窓を並べる
+        const rows = Math.floor((bh - 15) / 18);
+        const cols = Math.floor((bw - 10) / 16);
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const wx = bx + 8 + c * 16;
+            const wy = by + 12 + r * 18;
+            svg += `<rect x="${wx}" y="${wy}" width="10" height="10" fill="#BBDEFB" rx="1"/>`;
+          }
+        }
+      }
+      else if (b.type === 'school') {
+        const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="8" fill="${b.roof}"/>`;
+        // 時計
+        svg += `<circle cx="${bx+bw/2}" cy="${by+20}" r="10" fill="white" stroke="${b.roof}" stroke-width="2"/>`;
+        svg += `<line x1="${bx+bw/2}" y1="${by+20}" x2="${bx+bw/2}" y2="${by+13}" stroke="${b.roof}" stroke-width="2"/>`;
+        svg += `<line x1="${bx+bw/2}" y1="${by+20}" x2="${bx+bw/2+5}" y2="${by+20}" stroke="${b.roof}" stroke-width="1.5"/>`;
+        // 窓
+        for (let c = 0; c < 3; c++) {
+          svg += `<rect x="${bx+10+c*24}" y="${by+38}" width="16" height="14" fill="#BBDEFB" rx="1"/>`;
+        }
+        // 入口
+        svg += `<rect x="${bx+bw/2-10}" y="${by+bh-25}" width="20" height="25" fill="#5D4037" rx="2"/>`;
+      }
+      else if (b.type === 'park') {
+        // 公園: ブランコとベンチ
+        const px = b.x;
+        // ブランコ
+        svg += `<line x1="${px}" y1="${groundY-40}" x2="${px+30}" y2="${groundY-40}" stroke="#795548" stroke-width="3"/>`;
+        svg += `<line x1="${px}" y1="${groundY}" x2="${px}" y2="${groundY-40}" stroke="#795548" stroke-width="2"/>`;
+        svg += `<line x1="${px+30}" y1="${groundY}" x2="${px+30}" y2="${groundY-40}" stroke="#795548" stroke-width="2"/>`;
+        svg += `<line x1="${px+10}" y1="${groundY-40}" x2="${px+8}" y2="${groundY-15}" stroke="#666" stroke-width="1.5"/>`;
+        svg += `<line x1="${px+20}" y1="${groundY-40}" x2="${px+22}" y2="${groundY-15}" stroke="#666" stroke-width="1.5"/>`;
+        svg += `<rect x="${px+4}" y="${groundY-16}" width="10" height="3" fill="#EF6C00" rx="1"/>`;
+        svg += `<rect x="${px+18}" y="${groundY-16}" width="10" height="3" fill="#EF6C00" rx="1"/>`;
+        // 花
+        svg += drawFlower(px + 45, groundY - 5);
+        svg += drawFlower(px + 55, groundY - 3);
+        svg += drawFlower(px + 50, groundY - 8);
+      }
+      else if (b.type === 'tower') {
+        const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
+        // アンテナ
+        svg += `<line x1="${bx+bw/2}" y1="${by}" x2="${bx+bw/2}" y2="${by-20}" stroke="#666" stroke-width="2"/>`;
+        svg += `<circle cx="${bx+bw/2}" cy="${by-22}" r="3" fill="red"/>`;
+        // 窓
+        const rows = Math.floor((bh - 10) / 16);
+        for (let r = 0; r < rows; r++) {
+          svg += `<rect x="${bx+8}" y="${by+8+r*16}" width="${bw-16}" height="9" fill="#BBDEFB" rx="1"/>`;
+        }
+      }
+      else if (b.type === 'castle') {
+        const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
+        svg += `<rect x="${bx}" y="${by+15}" width="${bw}" height="${bh-15}" fill="${b.color}"/>`;
+        // 城壁のギザギザ
+        const merlonW = bw / 7;
+        for (let m = 0; m < 7; m += 2) {
+          svg += `<rect x="${bx+m*merlonW}" y="${by}" width="${merlonW}" height="20" fill="${b.color}"/>`;
+        }
+        // 塔
+        svg += `<rect x="${bx-8}" y="${by-10}" width="20" height="${bh+10}" fill="${b.roof}" opacity="0.7"/>`;
+        svg += `<rect x="${bx+bw-12}" y="${by-10}" width="20" height="${bh+10}" fill="${b.roof}" opacity="0.7"/>`;
+        // 旗
+        svg += `<line x1="${bx+bw/2}" y1="${by}" x2="${bx+bw/2}" y2="${by-25}" stroke="#666" stroke-width="2"/>`;
+        svg += `<polygon points="${bx+bw/2},${by-25} ${bx+bw/2+15},${by-19} ${bx+bw/2},${by-13}" fill="#F44336"/>`;
+        // 入口（アーチ）
+        svg += `<rect x="${bx+bw/2-12}" y="${by+bh-35}" width="24" height="35" fill="#5D4037" rx="12"/>`;
+        // 窓
+        svg += `<rect x="${bx+15}" y="${by+30}" width="12" height="16" fill="#BBDEFB" rx="6"/>`;
+        svg += `<rect x="${bx+bw-27}" y="${by+30}" width="12" height="16" fill="#BBDEFB" rx="6"/>`;
+      }
+
+      return svg;
+    }
+
+    function drawFlower(x, y) {
+      const colors = ['#E91E63', '#FF9800', '#9C27B0', '#F44336'];
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      return `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>
+        <line x1="${x}" y1="${y+3}" x2="${x}" y2="${y+10}" stroke="#4CAF50" stroke-width="1.5"/>`;
+    }
+
+    // ===== ゲーム終了 =====
+    function quitGame() {
+      endGame("おつかれさま！");
+    }
+
+    function endGame(message) {
+      gameEnded = true;
+      clearInterval(timerInterval);
+      clearInterval(taTimerInterval);
+      document.getElementById("options").innerHTML = "";
+      document.getElementById("question").style.display = "none";
+      document.getElementById("feedback").textContent = "";
+      document.getElementById("quitBtn").style.display = "none";
+      document.getElementById("gameOver").textContent = message;
+      document.getElementById("gameOver").style.display = "block";
+      document.getElementById("restart").style.display = "inline-block";
+      document.getElementById("resetData").style.display = "inline-block";
+      showMistakes();
+      playSound('fanfare');
+    }
+
+    function showMistakes() {
+      const mistakesDiv = document.getElementById("mistakesList");
+      mistakesDiv.style.display = "block";
+      let html = "<h3>まちがえたもんだい</h3><ul>";
+      const keys = Object.keys(mistakeCounts);
+      if (keys.length === 0) {
+        html += "<li>まちがえたもんだいはありません！</li>";
+      } else {
+        keys.sort((a, b) => mistakeCounts[b] - mistakeCounts[a]).forEach(key => {
+          const [a, b] = key.split(' × ');
+          html += `<li>${key} = ${parseInt(a)*parseInt(b)}（${mistakeCounts[key]}回）</li>`;
+        });
+      }
+      html += "</ul>";
+      mistakesDiv.innerHTML = html;
+    }
+
+    // ===== ヒートマップ =====
+    function showHeatmap() {
+      document.getElementById("modeSelection").style.display = "none";
+      document.getElementById("heatmapSection").style.display = "block";
+      renderHeatmap();
+    }
+
+    function hideHeatmap() {
+      document.getElementById("heatmapSection").style.display = "none";
+      document.getElementById("modeSelection").style.display = "block";
+    }
+
+    function renderHeatmap() {
+      const container = document.getElementById("heatmapContainer");
+      let html = '<table class="heatmap-table"><tr><th>×</th>';
+      for (let j = 1; j <= 9; j++) html += `<th>${j}</th>`;
+      html += '</tr>';
+
+      // 最大間違い回数を取得
+      let maxMistakes = 0;
+      for (const key in mistakeCounts) {
+        if (mistakeCounts[key] > maxMistakes) maxMistakes = mistakeCounts[key];
+      }
+
+      for (let i = 1; i <= 9; i++) {
+        html += `<tr><td class="row-header">${i}</td>`;
+        for (let j = 1; j <= 9; j++) {
+          const key = `${i} × ${j}`;
+          const count = mistakeCounts[key] || 0;
+          const bg = heatmapColor(count, maxMistakes);
+          const answer = i * j;
+          const title = count > 0 ? `${key} = ${answer}（${count}回まちがえ）` : `${key} = ${answer}`;
+          html += `<td style="background:${bg}" title="${title}">${answer}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</table>';
+      container.innerHTML = html;
+    }
+
+    function heatmapColor(count, max) {
+      if (count === 0) return '#e8f5e9';
+      if (max === 0) return '#e8f5e9';
+      const ratio = count / Math.max(max, 1);
+      if (ratio <= 0.33) return '#fff9c4';
+      if (ratio <= 0.66) return '#ffcc80';
+      return '#ef9a9a';
+    }
+
+    // ===== リセット =====
+    function resetMistakeData() {
+      localStorage.removeItem("mistakeCounts");
+      alert("リセットがかんりょうしました！");
+      location.reload();
+    }
+
+    // ===== 初期表示：ステージ1の街を描画 =====
+    drawCity(1);
+
+    // タッチ操作の改善
+    document.addEventListener("touchend", function() {
+      if (document.activeElement && document.activeElement.classList.contains("option")) {
+        document.activeElement.blur();
+      }
+    });
+  </script>
+</body>
+</html>
