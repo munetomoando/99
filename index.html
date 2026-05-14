@@ -14,7 +14,10 @@
     }
     body {
       text-align: center;
-      font-family: 'Comic Sans MS', cursive, sans-serif;
+      /* n. 日本語フォントを優先 */
+      font-family: 'Hiragino Maru Gothic ProN', 'Hiragino Maru Gothic Pro',
+                   'Yu Gothic Medium', 'YuGothic', 'Meiryo',
+                   'Comic Sans MS', cursive, sans-serif;
       background-color: #ffebf0;
       display: flex;
       flex-direction: column;
@@ -26,6 +29,29 @@
       padding: 10px 0;
     }
     h1 { color: #ff4081; font-size: 1.5em; margin: 5px 0; }
+
+    /* a. ミュートボタン（画面右上に固定／文字ベース） */
+    #muteBtn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      border: 2px solid #ff4081;
+      border-radius: 8px;
+      background: white;
+      color: #ff4081;
+      font-family: inherit;
+      font-size: 0.95em;
+      padding: 6px 12px;
+      cursor: pointer;
+      z-index: 100;
+      line-height: 1.3;
+      transition: 0.2s;
+    }
+    #muteBtn:hover, #muteBtn:focus {
+      background-color: #ff80ab;
+      color: white;
+      outline: none;
+    }
 
     /* モード選択 */
     #modeSelection {
@@ -46,6 +72,7 @@
       cursor: pointer;
       margin: 5px;
       transition: 0.3s;
+      font-family: inherit;
     }
     .mode-btn:hover, .mode-btn:focus {
       background-color: #ff80ab;
@@ -59,7 +86,38 @@
       gap: 10px;
     }
 
+    /* f. 自己ベスト表示 */
+    #bestRecord {
+      display: none;
+      color: #ff4081;
+      font-size: 1em;
+      margin: 6px 0;
+    }
+
+    /* o. リトライ設定 */
+    #retryLabel {
+      display: none;
+      color: #ff4081;
+      font-size: 0.95em;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+    #retryOption {
+      transform: scale(1.3);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
     #timer, #score { font-size: 1.2em; color: #ff4081; }
+    #clearGoal { font-size: 1em; color: #ff4081; margin: 2px 0; }
+    /* q. ステージ表示 */
+    #stageDisplay { font-size: 1em; color: #ff4081; margin: 2px 0; }
+
+    /* c. タイムアタックの経過時間色変化 */
+    #taTimer.warn { color: #ff9800; }
+    #taTimer.danger { color: #f44336; }
+    #taTimer.best { color: #4caf50; font-weight: bold; }
+
     #question {
       font-size: 1.8em;
       background: #ff80ab;
@@ -99,6 +157,7 @@
       border-radius: 10px;
       transition: 0.2s;
       font-family: inherit;
+      position: relative;
     }
     .option:active, .option.pressed {
       transform: scale(0.95);
@@ -113,7 +172,35 @@
       color: white;
       border-color: #d32f2f;
     }
+    /* l. disabled状態の視覚スタイル */
+    .option:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .option.correct-highlight:disabled,
+    .option.wrong-highlight:disabled {
+      opacity: 1;
+    }
     .option:focus { outline: 2px solid #ff4081; outline-offset: 2px; }
+    /* b. キーボード番号バッジ */
+    .option .key-badge {
+      position: absolute;
+      top: -8px;
+      left: -8px;
+      background: #ff4081;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.6em;
+      line-height: 20px;
+      font-weight: bold;
+      pointer-events: none;
+    }
+    @media (hover: none) {
+      /* タッチ端末ではキーボードバッジを非表示 */
+      .option .key-badge { display: none; }
+    }
 
     #gameOver, #mistakesList {
       display: none;
@@ -121,6 +208,13 @@
       color: #ff4081;
       margin-top: 10px;
       padding: 0 10px;
+    }
+    /* e. 正答率表示 */
+    #accuracyDisplay {
+      display: none;
+      font-size: 1.1em;
+      color: #ff4081;
+      margin-top: 6px;
     }
     .end-btn {
       display: none;
@@ -136,11 +230,10 @@
     }
     .end-btn:hover, .end-btn:focus { background-color: #ff80ab; color: white; }
 
-    /* まち表示 */
+    /* k. まち表示の幅を広げる */
     #city {
-      width: 80vw;
+      width: min(95vw, 700px);
       height: 30vh;
-      max-width: 700px;
       max-height: 300px;
       margin: 5px auto;
     }
@@ -204,48 +297,74 @@
       border: 1px solid #ccc;
       vertical-align: middle;
     }
+    /* p. よくある誤答先 */
+    .wrong-target { color: #d32f2f; font-size: 0.9em; }
 
     /* タイムアタック */
     #taProgress {
       font-size: 1.1em;
       color: #ff4081;
     }
+
+    /* d. にがてのみ練習バナー */
+    #weakBanner {
+      display: none;
+      background: #fff3e0;
+      color: #e65100;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin: 4px;
+      font-size: 0.95em;
+    }
   </style>
 </head>
 <body>
+  <!-- a. ミュートボタン -->
+  <button id="muteBtn" type="button">音をけす</button>
+
   <h1>九九をおぼえて、まちをつくろうゲーム</h1>
 
   <!-- モード選択 -->
   <div id="modeSelection">
     <h2>あそびかたをえらぶ</h2>
+    <div id="bestRecord">タイムアタック ベスト: <span id="bestTime">0.0</span>びょう</div>
     <div style="margin-bottom:8px; font-size:1.1em; color:#ff4081;">じかんせいげんモード</div>
     <div id="timeButtons">
-      <button class="mode-btn" onclick="startNormalGame(30)">30びょう</button>
-      <button class="mode-btn" onclick="startNormalGame(60)">60びょう</button>
-      <button class="mode-btn" onclick="startNormalGame(120)">120びょう</button>
+      <button class="mode-btn" data-time="30">30びょう</button>
+      <button class="mode-btn" data-time="60">60びょう</button>
+      <button class="mode-btn" data-time="120">120びょう</button>
     </div>
     <div style="margin-top:12px;">
-      <button class="mode-btn" onclick="startTimeAttack()">タイムアタックモード</button>
+      <button class="mode-btn" id="startTABtn">タイムアタックモード</button>
     </div>
     <div style="margin-top:12px;">
-      <button class="mode-btn" onclick="showHeatmap()">九九ひょう（にがてチェック）</button>
+      <button class="mode-btn" id="openHeatmapBtn">九九ひょう（にがてチェック）</button>
     </div>
+    <label id="retryLabel">
+      <input type="checkbox" id="retryOption">
+      まちがえたらすぐもういちど
+    </label>
   </div>
 
+  <div id="weakBanner">にがてだけれんしゅう ちゅう</div>
   <div id="timer" style="display:none">のこりじかん: <span id="timeLeft">0</span>びょう</div>
   <div id="taProgress" style="display:none">もんだい: <span id="taCount">0</span> / 81</div>
   <div id="taTimer" style="display:none; font-size:1.2em; color:#ff4081;">タイム: <span id="taTime">0.0</span>びょう</div>
-  <div id="score" style="display:none">スコア: <span id="scoreValue">0</span></div>
+  <div id="score" style="display:none">スコア: <span id="scoreValue">0</span> / 30</div>
+  <div id="clearGoal" style="display:none">30問せいかいでクリア！</div>
+  <div id="stageDisplay" style="display:none">まち: <span id="stageNum">1</span> / 10</div>
   <div id="question">ここに もんだい が ひょうじ されます</div>
-  <div id="feedback"></div>
+  <!-- m. aria-live でフィードバックを読み上げ対象に -->
+  <div id="feedback" aria-live="polite" aria-atomic="true"></div>
   <div id="options" role="group" aria-label="こたえのせんたくし"></div>
   <div id="city"></div>
-  <button class="end-btn" id="quitBtn" onclick="quitGame()">やめる</button>
+  <button class="end-btn" id="quitBtn">やめる</button>
   <div id="gameOver">じかんぎれ！</div>
+  <div id="accuracyDisplay"></div>
   <div id="mistakesList"></div>
-  <button class="end-btn" id="restart" onclick="location.reload()">もういちど あそぶ</button>
-  <button class="end-btn" id="showHeatmapBtn" onclick="showHeatmapFromResult()">九九ひょう（にがてチェック）</button>
-  <button class="end-btn" id="resetData" onclick="resetMistakeData()">まちがえのきろくをリセット</button>
+  <button class="end-btn" id="restart">もういちど あそぶ</button>
+  <button class="end-btn" id="showHeatmapBtn">九九ひょう（にがてチェック）</button>
+  <button class="end-btn" id="resetData">まちがえのきろくをリセット</button>
 
   <!-- ヒートマップ -->
   <div id="heatmapSection">
@@ -258,16 +377,128 @@
       <span class="legend-box" style="background:#ef9a9a"></span> にがて
     </div>
     <br>
-    <button class="mode-btn" onclick="hideHeatmap()">もどる</button>
+    <button class="mode-btn" id="weakOnlyBtn">にがてだけれんしゅう（60びょう）</button>
+    <button class="mode-btn" id="hideHeatmapBtn">もどる</button>
   </div>
 
   <script>
-    // ===== 音声 =====
-    // mp3ファイルがあればそちらを優先、なければWeb Audio APIで合成音にフォールバック
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const loadedAudioFiles = {}; // name -> Audio (読み込み成功したもののみ)
+    // ===== h. 定数 =====
+    const CONFIG = {
+      NORMAL_GOAL: 30,
+      CITY_GROWTH_INTERVAL: 3,
+      TA_CITY_GROWTH_INTERVAL: 9,
+      MAX_STAGE: 10,
+      TA_TOTAL: 81,
+      WEAK_PRACTICE_TIME: 60,
+      FEEDBACK_DELAY_CORRECT: 400,
+      FEEDBACK_DELAY_WRONG: 1200,
+      TA_COLOR_WARN_AT: 30,   // 秒
+      TA_COLOR_DANGER_AT: 60, // 秒
+      STORAGE_KEYS: {
+        mistakes: 'mistakeCounts',
+        wrongAnswers: 'wrongAnswers',
+        bestTime: 'taBestTime',
+        muted: 'isMuted',
+        retry: 'retryOnWrong',
+      },
+    };
 
-    // mp3ファイルのプリロード
+    // ===== i. ゲーム状態を1オブジェクトに集約 =====
+    const state = {
+      mode: null,            // 'normal' | 'timeattack' | null
+      timeLeft: 0,
+      correct: 0,
+      totalAnswers: 0,
+      cityStage: 1,
+      previous: { num1: null, num2: null },
+      ended: false,
+      waiting: false,
+      // タイムアタック
+      taProblems: [],
+      taSolved: 0,
+      taStartTime: 0,
+      // オプション
+      retryOnWrong: false,
+      weakOnly: false,
+      // リトライ用：次回の問題を強制
+      forceProblem: null,
+    };
+
+    let timerInterval = null;
+    let taTimerInterval = null;
+
+    // ===== ストレージユーティリティ =====
+    function safeLoad(key, fallback) {
+      try {
+        const v = localStorage.getItem(key);
+        return v === null ? fallback : JSON.parse(v);
+      } catch (e) { return fallback; }
+    }
+    function safeSave(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* ignore */ }
+    }
+
+    // ===== 苦手キー操作ヘルパー =====
+    function mistakeKey(i, j) { return `${i}_${j}`; }
+    function formatProblem(i, j) { return `${i} × ${j}`; }
+    function migrateMistakeKeys(raw) {
+      const result = {};
+      for (const key in raw) {
+        const m = key.match(/^(\d+)\s*[×x]\s*(\d+)$/);
+        if (m) result[mistakeKey(m[1], m[2])] = raw[key];
+        else if (/^\d+_\d+$/.test(key)) result[key] = raw[key];
+      }
+      return result;
+    }
+
+    let mistakeCounts = migrateMistakeKeys(safeLoad(CONFIG.STORAGE_KEYS.mistakes, {}));
+    // p. 誤答パターン: { mistakeKey: { selectedValue: count } }
+    let wrongAnswers = safeLoad(CONFIG.STORAGE_KEYS.wrongAnswers, {});
+
+    // ===== a. ミュート =====
+    let isMuted = safeLoad(CONFIG.STORAGE_KEYS.muted, false) === true;
+    function setMuted(v) {
+      isMuted = !!v;
+      safeSave(CONFIG.STORAGE_KEYS.muted, isMuted);
+      const btn = document.getElementById('muteBtn');
+      // ボタンには「次にできる操作」を表示する
+      btn.textContent = isMuted ? '音を出す' : '音をけす';
+      btn.setAttribute('aria-label', isMuted ? '音を出す' : '音をけす');
+    }
+
+    // ===== f. 自己ベスト =====
+    function getBestTime() {
+      const v = safeLoad(CONFIG.STORAGE_KEYS.bestTime, null);
+      return typeof v === 'number' ? v : null;
+    }
+    function setBestTime(t) { safeSave(CONFIG.STORAGE_KEYS.bestTime, t); }
+    function refreshBestRecordDisplay() {
+      const t = getBestTime();
+      const el = document.getElementById('bestRecord');
+      if (t !== null) {
+        document.getElementById('bestTime').textContent = t.toFixed(1);
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    // ===== 音声 =====
+    let audioCtx = null;
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+          return null;
+        }
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+    const loadedAudioFiles = {};
     ['correct', 'wrong', 'fanfare'].forEach(name => {
       const audio = new Audio(`${name}.mp3`);
       audio.preload = 'auto';
@@ -276,186 +507,260 @@
       audio.load();
     });
 
-    // 合成音の定義（フォールバック用）
-    // correct: ピンポーン（高い2音の和音）
-    // wrong: ブッ（短い低音ブザー）
-    // fanfare: ファンファーレ（上昇する4音）
+    // 合成音（mp3が無い時のフォールバック）
     const synthDefs = {
       correct: [
-        // ピン（高めのサイン波）
         { freq: 880, start: 0, dur: 0.25, type: 'sine', gain: 0.3 },
-        // ポーン（少し低いサイン波、重ねて響かせる）
         { freq: 1108.73, start: 0.08, dur: 0.4, type: 'sine', gain: 0.25 },
-        // 余韻
         { freq: 880, start: 0.08, dur: 0.4, type: 'sine', gain: 0.15 },
       ],
       wrong: [
-        // ブッ（短い低音ブザー）
         { freq: 150, start: 0, dur: 0.2, type: 'square', gain: 0.18 },
         { freq: 120, start: 0, dur: 0.2, type: 'sawtooth', gain: 0.08 },
       ],
       fanfare: [
-        // ドー
         { freq: 523.25, start: 0, dur: 0.2, type: 'sine', gain: 0.25 },
         { freq: 523.25, start: 0, dur: 0.2, type: 'triangle', gain: 0.1 },
-        // ミー
         { freq: 659.25, start: 0.2, dur: 0.2, type: 'sine', gain: 0.25 },
         { freq: 659.25, start: 0.2, dur: 0.2, type: 'triangle', gain: 0.1 },
-        // ソー
         { freq: 783.99, start: 0.4, dur: 0.2, type: 'sine', gain: 0.25 },
         { freq: 783.99, start: 0.4, dur: 0.2, type: 'triangle', gain: 0.1 },
-        // ドー（高い、長め）
         { freq: 1046.50, start: 0.6, dur: 0.5, type: 'sine', gain: 0.3 },
         { freq: 1046.50, start: 0.6, dur: 0.5, type: 'triangle', gain: 0.12 },
-      ]
+      ],
+      // j. やめる音（短い下降2音）
+      quit: [
+        { freq: 587.33, start: 0, dur: 0.18, type: 'sine', gain: 0.2 },
+        { freq: 440.00, start: 0.18, dur: 0.25, type: 'sine', gain: 0.2 },
+      ],
     };
 
     function playSound(name) {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-
-      // mp3ファイルが読み込めていればそちらを再生
+      if (isMuted) return;
+      // mp3優先（'quit'はmp3が無いので合成音にフォールバック）
       if (loadedAudioFiles[name]) {
-        const audio = loadedAudioFiles[name].cloneNode();
+        const audio = loadedAudioFiles[name];
+        try { audio.currentTime = 0; } catch (e) {}
         audio.play().catch(() => {});
         return;
       }
-
-      // 合成音で再生
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
       const defs = synthDefs[name];
       if (!defs) return;
       defs.forEach(d => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
         osc.type = d.type;
         osc.frequency.value = d.freq;
-        gain.gain.setValueAtTime(d.gain, audioCtx.currentTime + d.start);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d.start + d.dur);
+        gain.gain.setValueAtTime(d.gain, ctx.currentTime + d.start);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d.start + d.dur);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + d.start);
-        osc.stop(audioCtx.currentTime + d.start + d.dur + 0.05);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + d.start);
+        osc.stop(ctx.currentTime + d.start + d.dur + 0.05);
       });
     }
 
-    // ===== ゲーム状態 =====
-    let timeLeft;
-    let timerInterval;
-    let correctCount = 0;
-    let cityStage = 1;
-    let previousProblem = { num1: null, num2: null };
-    let mistakeCounts = JSON.parse(localStorage.getItem("mistakeCounts")) || {};
-    let gameEnded = false;
-    let gameMode = null; // 'normal' or 'timeattack'
-    let waitingForNext = false; // フィードバック表示中は入力を無視
+    // ===== UI helpers =====
+    function show(id, disp) { document.getElementById(id).style.display = disp; }
+    function hide(id) { document.getElementById(id).style.display = 'none'; }
+    function updateStageDisplay() {
+      document.getElementById('stageNum').textContent = state.cityStage;
+    }
 
-    // タイムアタック用
-    let taProblems = [];
-    let taSolved = 0;
-    let taStartTime = 0;
-    let taTimerInterval;
+    // 問題表示の共通処理（previous記録 + 表示 + 選択肢生成）
+    function showProblem(num1, num2) {
+      state.previous = { num1, num2 };
+      document.getElementById('question').textContent = `${num1} × ${num2} = ?`;
+      renderOptions(num1 * num2);
+    }
+
+    // モードに応じて次の問題を出題
+    function nextQuestion() {
+      if (state.mode === 'normal') generateQuestion();
+      else generateTAQuestion();
+    }
+
+    // フィードバック後の遷移を遅延実行
+    function scheduleNext(delay) {
+      setTimeout(() => {
+        state.waiting = false;
+        nextQuestion();
+      }, delay);
+    }
+
+    // ===== 画面遷移 =====
+    // 注: 表示/非表示を切り替える要素はすべてここに列挙すること
+    const TOGGLEABLE_IDS = [
+      'modeSelection', 'timer', 'score', 'clearGoal', 'stageDisplay',
+      'taProgress', 'taTimer', 'question', 'quitBtn', 'city',
+      'gameOver', 'accuracyDisplay', 'mistakesList',
+      'restart', 'showHeatmapBtn', 'resetData',
+      'heatmapSection', 'weakBanner',
+    ];
+    const SCREENS = {
+      modeSelect: { modeSelection: 'block', city: 'block' },
+      inGameNormal: {
+        timer: 'block', score: 'block', clearGoal: 'block',
+        stageDisplay: 'block', question: 'inline-block',
+        quitBtn: 'inline-block', city: 'block',
+      },
+      inGameTA: {
+        taProgress: 'block', taTimer: 'block',
+        stageDisplay: 'block', question: 'inline-block',
+        quitBtn: 'inline-block', city: 'block',
+      },
+      resultNormal: {
+        timer: 'block', score: 'block', city: 'block',
+        gameOver: 'block', accuracyDisplay: 'block', mistakesList: 'block',
+        restart: 'inline-block', showHeatmapBtn: 'inline-block', resetData: 'inline-block',
+      },
+      resultTA: {
+        taProgress: 'block', taTimer: 'block', city: 'block',
+        gameOver: 'block', accuracyDisplay: 'block', mistakesList: 'block',
+        restart: 'inline-block', showHeatmapBtn: 'inline-block', resetData: 'inline-block',
+      },
+      heatmap: { heatmapSection: 'block' },
+    };
+    function goToScreen(name, extras = {}) {
+      const visible = { ...SCREENS[name], ...extras };
+      TOGGLEABLE_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible[id] || 'none';
+      });
+    }
 
     // ===== PNG画像プリロード =====
-    // 各ステージのPNG画像が利用可能かチェックし、使えるものはキャッシュ
-    const cityImages = {}; // stage -> Image (読み込み成功したもののみ)
+    const cityImages = {};
     (function preloadCityImages() {
-      for (let s = 1; s <= 10; s++) {
+      for (let s = 1; s <= CONFIG.MAX_STAGE; s++) {
         const img = new Image();
         const stage = s;
-        img.onload = function() { cityImages[stage] = img; refreshCity(); };
+        img.onload = function() { cityImages[stage] = img; if (state.cityStage === stage) drawCity(stage); };
         img.onerror = function() { /* PNG無し → SVGフォールバック */ };
         img.src = `${String(s).padStart(3, '0')}.png`;
       }
     })();
 
-    // 現在のステージを再描画（プリロード完了時に呼ばれる）
-    function refreshCity() {
-      drawCity(cityStage);
-    }
+    // ===== 通常モード開始 =====
+    function startNormalGame(time, opts = {}) {
+      ensureAudioContext();
+      state.mode = 'normal';
+      state.timeLeft = time;
+      state.correct = 0;
+      state.totalAnswers = 0;
+      state.ended = false;
+      state.waiting = false;
+      state.previous = { num1: null, num2: null };
+      state.forceProblem = null;
+      state.weakOnly = !!opts.weakOnly;
 
-    // ===== 通常モード =====
-    function startNormalGame(time) {
-      gameMode = 'normal';
-      timeLeft = time;
-      gameEnded = false;
-      document.getElementById("modeSelection").style.display = "none";
-      document.getElementById("timer").style.display = "block";
-      document.getElementById("score").style.display = "block";
-      document.getElementById("question").style.display = "inline-block";
-      document.getElementById("quitBtn").style.display = "inline-block";
-      document.getElementById("timeLeft").textContent = timeLeft;
-      drawCity(cityStage);
+      goToScreen('inGameNormal', state.weakOnly ? { weakBanner: 'inline-block' } : {});
+
+      document.getElementById('timeLeft').textContent = state.timeLeft;
+      document.getElementById('scoreValue').textContent = '0';
+      updateStageDisplay();
+      drawCity(state.cityStage);
       generateQuestion();
       timerInterval = setInterval(updateTimer, 1000);
     }
 
     function updateTimer() {
-      if (gameEnded) return;
-      timeLeft--;
-      document.getElementById("timeLeft").textContent = timeLeft;
-      if (timeLeft <= 0) {
+      if (state.ended) return;
+      state.timeLeft--;
+      document.getElementById('timeLeft').textContent = state.timeLeft;
+      if (state.timeLeft <= 0) {
         clearInterval(timerInterval);
-        endGame("じかんぎれ！");
+        endGame('じかんぎれ！');
       }
     }
 
-    // ===== タイムアタックモード =====
+    // ===== タイムアタック開始 =====
     function startTimeAttack() {
-      gameMode = 'timeattack';
-      gameEnded = false;
-      document.getElementById("modeSelection").style.display = "none";
-      document.getElementById("quitBtn").style.display = "inline-block";
-      // 全81問をシャッフルして用意
-      taProblems = [];
+      ensureAudioContext();
+      state.mode = 'timeattack';
+      state.ended = false;
+      state.waiting = false;
+      state.totalAnswers = 0;
+      state.previous = { num1: null, num2: null };
+      state.weakOnly = false;
+      state.forceProblem = null;
+
+      // 全81問をシャッフル
+      state.taProblems = [];
       for (let i = 1; i <= 9; i++) {
         for (let j = 1; j <= 9; j++) {
-          taProblems.push({ num1: i, num2: j });
+          state.taProblems.push({ num1: i, num2: j });
         }
       }
-      // Fisher-Yatesシャッフル
-      for (let i = taProblems.length - 1; i > 0; i--) {
+      for (let i = state.taProblems.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [taProblems[i], taProblems[j]] = [taProblems[j], taProblems[i]];
+        [state.taProblems[i], state.taProblems[j]] = [state.taProblems[j], state.taProblems[i]];
       }
-      taSolved = 0;
+      state.taSolved = 0;
 
-      document.getElementById("taProgress").style.display = "block";
-      document.getElementById("taTimer").style.display = "block";
-      document.getElementById("question").style.display = "inline-block";
-      document.getElementById("taCount").textContent = "0";
-      drawCity(cityStage);
+      goToScreen('inGameTA');
+      document.getElementById('taCount').textContent = '0';
+      const taTimerEl = document.getElementById('taTimer');
+      taTimerEl.classList.remove('warn', 'danger', 'best');
+      updateStageDisplay();
+      drawCity(state.cityStage);
 
-      taStartTime = performance.now();
-      taTimerInterval = setInterval(() => {
-        const elapsed = ((performance.now() - taStartTime) / 1000).toFixed(1);
-        document.getElementById("taTime").textContent = elapsed;
-      }, 100);
+      state.taStartTime = performance.now();
+      taTimerInterval = setInterval(updateTATimer, 100);
 
       generateTAQuestion();
     }
 
-    function generateTAQuestion() {
-      if (gameEnded) return;
-      const problem = taProblems[taSolved];
-      const correctAnswer = problem.num1 * problem.num2;
-      previousProblem = { num1: problem.num1, num2: problem.num2 };
-
-      document.getElementById("question").textContent = `${problem.num1} × ${problem.num2} = ?`;
-      renderOptions(correctAnswer);
+    // c. タイムアタックの経過時間色変化
+    function updateTATimer() {
+      const elapsed = (performance.now() - state.taStartTime) / 1000;
+      document.getElementById('taTime').textContent = elapsed.toFixed(1);
+      const el = document.getElementById('taTimer');
+      el.classList.remove('warn', 'danger');
+      if (elapsed >= CONFIG.TA_COLOR_DANGER_AT) el.classList.add('danger');
+      else if (elapsed >= CONFIG.TA_COLOR_WARN_AT) el.classList.add('warn');
     }
 
-    // ===== 問題生成（通常モード） =====
-    function generateQuestion() {
-      if (gameEnded) return;
+    function generateTAQuestion() {
+      if (state.ended) return;
+      const problem = state.taProblems[state.taSolved];
+      showProblem(problem.num1, problem.num2);
+    }
 
+    // ===== 通常モード問題生成 =====
+    function generateQuestion() {
+      if (state.ended) return;
+
+      // o. 即リトライ：直前の問題を強制
+      if (state.forceProblem) {
+        const fp = state.forceProblem;
+        state.forceProblem = null;
+        showProblem(fp.num1, fp.num2);
+        return;
+      }
+
+      // d. 苦手のみモードでは間違えた問題からのみ出題
       const problems = [];
       const weights = [];
       for (let i = 1; i <= 9; i++) {
         for (let j = 1; j <= 9; j++) {
-          const key = `${i} × ${j}`;
-          const weight = (mistakeCounts[key] || 0) + 1;
+          const count = mistakeCounts[mistakeKey(i, j)] || 0;
+          if (state.weakOnly && count === 0) continue;
+          const weight = count + (state.weakOnly ? 0 : 1);
+          // weakOnlyではcountをそのまま重みに
           problems.push({ num1: i, num2: j });
-          weights.push(weight);
+          weights.push(state.weakOnly ? Math.max(count, 1) : weight);
         }
+      }
+
+      if (problems.length === 0) {
+        // 苦手な問題がない場合：通常モードへフォールバック
+        state.weakOnly = false;
+        document.getElementById('weakBanner').style.display = 'none';
+        generateQuestion();
+        return;
       }
 
       let selectedProblem;
@@ -469,7 +774,7 @@
           if (r <= 0) { index = k; break; }
         }
         const candidate = problems[index];
-        if (candidate.num1 === previousProblem.num1 && candidate.num2 === previousProblem.num2) {
+        if (candidate.num1 === state.previous.num1 && candidate.num2 === state.previous.num2 && problems.length > 1) {
           attempts++;
           continue;
         }
@@ -480,166 +785,334 @@
         do {
           const randomIndex = Math.floor(Math.random() * problems.length);
           selectedProblem = problems[randomIndex];
-        } while (selectedProblem.num1 === previousProblem.num1 && selectedProblem.num2 === previousProblem.num2);
+        } while (
+          problems.length > 1 &&
+          selectedProblem.num1 === state.previous.num1 &&
+          selectedProblem.num2 === state.previous.num2
+        );
       }
 
-      previousProblem = { num1: selectedProblem.num1, num2: selectedProblem.num2 };
-      const correctAnswer = selectedProblem.num1 * selectedProblem.num2;
-      document.getElementById("question").textContent = `${selectedProblem.num1} × ${selectedProblem.num2} = ?`;
-      renderOptions(correctAnswer);
+      showProblem(selectedProblem.num1, selectedProblem.num2);
     }
 
-    // ===== 選択肢生成（改善版：間違えやすい選択肢） =====
+    // ===== 選択肢生成 =====
     function generateDistractors(correct, num1, num2) {
       const distractors = new Set();
-
-      // 間違えやすい候補を作成
       const candidates = [];
-      // ±1ずれた段の答え
       if (num2 > 1) candidates.push(num1 * (num2 - 1));
       if (num2 < 9) candidates.push(num1 * (num2 + 1));
       if (num1 > 1) candidates.push((num1 - 1) * num2);
       if (num1 < 9) candidates.push((num1 + 1) * num2);
-      // 数字の入れ替え（例: 24→42）
       if (correct >= 10) {
         const reversed = parseInt(String(correct).split('').reverse().join(''));
         if (reversed !== correct && reversed > 0 && reversed <= 81) candidates.push(reversed);
       }
-      // ±1, ±2
       candidates.push(correct + 1, correct - 1, correct + 2, correct - 2);
-      // 同じ段の近い答え
       for (let k = 1; k <= 9; k++) {
         if (k !== num2) candidates.push(num1 * k);
         if (k !== num1) candidates.push(k * num2);
       }
-
-      // 候補をシャッフルして重複・正解・不正値を除外
       const shuffled = candidates
         .filter(v => v > 0 && v <= 81 && v !== correct)
         .sort(() => Math.random() - 0.5);
-
       for (const v of shuffled) {
         if (distractors.size >= 3) break;
         distractors.add(v);
       }
-
-      // 足りなければランダム補充
       while (distractors.size < 3) {
         const v = (Math.floor(Math.random() * 9) + 1) * (Math.floor(Math.random() * 9) + 1);
         if (v !== correct) distractors.add(v);
       }
-
       return [...distractors].slice(0, 3);
     }
 
     function renderOptions(correctAnswer) {
-      const distractors = generateDistractors(correctAnswer, previousProblem.num1, previousProblem.num2);
+      const distractors = generateDistractors(correctAnswer, state.previous.num1, state.previous.num2);
       const options = [correctAnswer, ...distractors].sort(() => Math.random() - 0.5);
 
-      const optionsDiv = document.getElementById("options");
-      optionsDiv.innerHTML = "";
-      document.getElementById("feedback").textContent = "";
-      document.getElementById("feedback").className = "";
+      const optionsDiv = document.getElementById('options');
+      optionsDiv.innerHTML = '';
+      const feedbackEl = document.getElementById('feedback');
+      feedbackEl.textContent = '';
+      feedbackEl.className = '';
 
-      options.forEach(option => {
-        const button = document.createElement("button");
-        button.className = "option";
-        button.textContent = option;
-        button.setAttribute("aria-label", `こたえ ${option}`);
-        button.onclick = () => handleAnswer(option, correctAnswer, optionsDiv);
+      options.forEach((option, idx) => {
+        const button = document.createElement('button');
+        button.className = 'option';
+        button.dataset.value = option;
+        button.setAttribute('aria-label', `こたえ ${option}`);
+        // b. キーボード番号バッジ
+        const badge = document.createElement('span');
+        badge.className = 'key-badge';
+        badge.textContent = idx + 1;
+        button.appendChild(badge);
+        button.appendChild(document.createTextNode(option));
+        button.addEventListener('click', () => handleAnswer(option, correctAnswer, optionsDiv));
         optionsDiv.appendChild(button);
       });
     }
 
-    // ===== 回答処理（フィードバック付き） =====
+    // ===== 回答処理 =====
     function handleAnswer(selected, correct, optionsDiv) {
-      if (gameEnded || waitingForNext) return;
+      if (state.ended || state.waiting) return;
 
-      const feedbackEl = document.getElementById("feedback");
-      const buttons = optionsDiv.querySelectorAll(".option");
-
-      // 全ボタンを無効化
-      waitingForNext = true;
+      state.totalAnswers++;
+      const feedbackEl = document.getElementById('feedback');
+      const buttons = optionsDiv.querySelectorAll('.option');
+      state.waiting = true;
       buttons.forEach(btn => { btn.disabled = true; });
 
       if (selected === correct) {
-        // 正解
         playSound('correct');
         buttons.forEach(btn => {
-          if (parseInt(btn.textContent) === correct) btn.classList.add("correct-highlight");
+          if (Number(btn.dataset.value) === correct) btn.classList.add('correct-highlight');
         });
-        feedbackEl.textContent = "⭕ せいかい！";
-        feedbackEl.className = "correct";
+        feedbackEl.textContent = '⭕ せいかい！';
+        feedbackEl.className = 'correct';
 
-        if (gameMode === 'normal') {
-          correctCount++;
-          document.getElementById("scoreValue").textContent = correctCount;
-          if (correctCount >= 30) {
-            setTimeout(() => endGame("おめでとう！"), 400);
+        if (state.mode === 'normal') {
+          state.correct++;
+          document.getElementById('scoreValue').textContent = state.correct;
+          if (state.correct >= CONFIG.NORMAL_GOAL) {
+            setTimeout(() => endGame('おめでとう！'), CONFIG.FEEDBACK_DELAY_CORRECT);
             return;
           }
-          if (correctCount % 3 === 0 && cityStage < 10) {
-            cityStage++;
-            drawCity(cityStage);
+          if (state.correct % CONFIG.CITY_GROWTH_INTERVAL === 0 && state.cityStage < CONFIG.MAX_STAGE) {
+            state.cityStage++;
+            updateStageDisplay();
+            drawCity(state.cityStage);
           }
-        } else if (gameMode === 'timeattack') {
-          taSolved++;
-          document.getElementById("taCount").textContent = taSolved;
-          // タイムアタックでも街を成長させる（9問ごと）
-          const newStage = Math.min(10, Math.floor(taSolved / 9) + 1);
-          if (newStage !== cityStage) {
-            cityStage = newStage;
-            drawCity(cityStage);
+        } else if (state.mode === 'timeattack') {
+          state.correct++;
+          state.taSolved++;
+          document.getElementById('taCount').textContent = state.taSolved;
+          const newStage = Math.min(CONFIG.MAX_STAGE, Math.floor(state.taSolved / CONFIG.TA_CITY_GROWTH_INTERVAL) + 1);
+          if (newStage !== state.cityStage) {
+            state.cityStage = newStage;
+            updateStageDisplay();
+            drawCity(state.cityStage);
           }
-          if (taSolved >= 81) {
+          if (state.taSolved >= CONFIG.TA_TOTAL) {
             setTimeout(() => {
               clearInterval(taTimerInterval);
-              const elapsed = ((performance.now() - taStartTime) / 1000).toFixed(1);
-              endGame(`クリア！タイム: ${elapsed}びょう`);
-            }, 400);
+              const elapsed = (performance.now() - state.taStartTime) / 1000;
+              // f. 自己ベスト判定
+              const best = getBestTime();
+              const isNewBest = best === null || elapsed < best;
+              if (isNewBest) {
+                setBestTime(parseFloat(elapsed.toFixed(1)));
+                document.getElementById('taTimer').classList.add('best');
+              }
+              const msg = isNewBest
+                ? `クリア！タイム: ${elapsed.toFixed(1)}びょう（じこベスト！）`
+                : `クリア！タイム: ${elapsed.toFixed(1)}びょう`;
+              endGame(msg);
+            }, CONFIG.FEEDBACK_DELAY_CORRECT);
             return;
           }
         }
 
-        setTimeout(() => {
-          waitingForNext = false;
-          if (gameMode === 'normal') generateQuestion();
-          else generateTAQuestion();
-        }, 400);
+        scheduleNext(CONFIG.FEEDBACK_DELAY_CORRECT);
 
       } else {
-        // 不正解
         playSound('wrong');
         buttons.forEach(btn => {
-          const val = parseInt(btn.textContent);
-          if (val === selected) btn.classList.add("wrong-highlight");
-          if (val === correct) btn.classList.add("correct-highlight");
+          const val = Number(btn.dataset.value);
+          if (val === selected) btn.classList.add('wrong-highlight');
+          if (val === correct) btn.classList.add('correct-highlight');
         });
         feedbackEl.textContent = `❌ ざんねん… こたえは ${correct}`;
-        feedbackEl.className = "wrong";
+        feedbackEl.className = 'wrong';
 
-        const key = `${previousProblem.num1} × ${previousProblem.num2}`;
+        // まちがえ記録
+        const key = mistakeKey(state.previous.num1, state.previous.num2);
         mistakeCounts[key] = (mistakeCounts[key] || 0) + 1;
-        localStorage.setItem("mistakeCounts", JSON.stringify(mistakeCounts));
+        safeSave(CONFIG.STORAGE_KEYS.mistakes, mistakeCounts);
+        // p. 誤答パターン記録
+        if (!wrongAnswers[key]) wrongAnswers[key] = {};
+        wrongAnswers[key][selected] = (wrongAnswers[key][selected] || 0) + 1;
+        safeSave(CONFIG.STORAGE_KEYS.wrongAnswers, wrongAnswers);
 
-        if (gameMode === 'normal' && cityStage > 1) {
-          cityStage--;
-          drawCity(cityStage);
+        if (state.mode === 'normal' && state.cityStage > 1) {
+          state.cityStage--;
+          updateStageDisplay();
+          drawCity(state.cityStage);
         }
 
-        setTimeout(() => {
-          waitingForNext = false;
-          if (gameMode === 'normal') generateQuestion();
-          else generateTAQuestion();
-        }, 1200);
+        // o. 即リトライ：通常モードのみ（TAは元々間違えた問題が次も出る仕様）
+        if (state.retryOnWrong && state.mode === 'normal') {
+          state.forceProblem = { num1: state.previous.num1, num2: state.previous.num2 };
+        }
+
+        scheduleNext(CONFIG.FEEDBACK_DELAY_WRONG);
       }
     }
 
-    // ===== まち描画（SVG生成） =====
-    function drawCity(stage) {
-      const cityDiv = document.getElementById("city");
+    // ===== ゲーム終了 =====
+    function quitGame() {
+      // j. やめる時はファンファーレでなく短い終了音
+      endGame('おつかれさま！', { soundName: 'quit' });
+    }
 
-      // PNG画像が利用可能ならそちらを使う
+    function endGame(message, opts = {}) {
+      state.ended = true;
+      clearInterval(timerInterval);
+      clearInterval(taTimerInterval);
+      document.getElementById('options').innerHTML = '';
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('gameOver').textContent = message;
+      goToScreen(state.mode === 'normal' ? 'resultNormal' : 'resultTA');
+      showAccuracy();   // totalAnswers===0なら内部でhide
+      showMistakes();
+      playSound(opts.soundName || 'fanfare');
+    }
+
+    // e. 正答率
+    function showAccuracy() {
+      const el = document.getElementById('accuracyDisplay');
+      if (state.totalAnswers === 0) {
+        el.style.display = 'none';
+        return;
+      }
+      const pct = Math.round((state.correct / state.totalAnswers) * 100);
+      el.textContent = `${state.totalAnswers}問中 ${state.correct}問せいかい（${pct}%）`;
+      el.style.display = 'block';
+    }
+
+    function showMistakes() {
+      const mistakesDiv = document.getElementById('mistakesList');
+      mistakesDiv.style.display = 'block';
+      let html = '<h3>まちがえたもんだい</h3><ul>';
+      const keys = Object.keys(mistakeCounts);
+      if (keys.length === 0) {
+        html += '<li>まちがえたもんだいはありません！</li>';
+      } else {
+        keys.sort((a, b) => mistakeCounts[b] - mistakeCounts[a]).forEach(key => {
+          const [a, b] = key.split('_').map(Number);
+          // p. 一番多い誤答先を表示
+          const wrong = topWrongAnswer(key);
+          const wrongStr = wrong !== null ? ` <span class="wrong-target">→ よく ${wrong} とこたえる</span>` : '';
+          html += `<li>${formatProblem(a, b)} = ${a * b}（${mistakeCounts[key]}回）${wrongStr}</li>`;
+        });
+      }
+      html += '</ul>';
+      mistakesDiv.innerHTML = html;
+    }
+
+    function topWrongAnswer(key) {
+      const map = wrongAnswers[key];
+      if (!map) return null;
+      let best = null, bestCount = 0;
+      for (const v in map) {
+        if (map[v] > bestCount) { bestCount = map[v]; best = v; }
+      }
+      return best === null ? null : Number(best);
+    }
+
+    // ===== ヒートマップ =====
+    let heatmapReturnTo = null;
+
+    function showHeatmap() {
+      heatmapReturnTo = () => goToScreen('modeSelect');
+      goToScreen('heatmap');
+      renderHeatmap();
+    }
+
+    function showHeatmapFromResult() {
+      const returnScreen = state.mode === 'normal' ? 'resultNormal' : 'resultTA';
+      heatmapReturnTo = () => {
+        goToScreen(returnScreen);
+        // 正答率が0なら隠す
+        if (state.totalAnswers === 0) hide('accuracyDisplay');
+      };
+      goToScreen('heatmap');
+      renderHeatmap();
+    }
+
+    function hideHeatmap() {
+      if (heatmapReturnTo) {
+        const cb = heatmapReturnTo;
+        heatmapReturnTo = null;
+        cb();
+      } else {
+        goToScreen('modeSelect');
+      }
+    }
+
+    function renderHeatmap() {
+      const container = document.getElementById('heatmapContainer');
+      let html = '<table class="heatmap-table"><tr><th>×</th>';
+      for (let j = 1; j <= 9; j++) html += `<th>${j}</th>`;
+      html += '</tr>';
+
+      let maxMistakes = 0;
+      for (const k in mistakeCounts) {
+        if (mistakeCounts[k] > maxMistakes) maxMistakes = mistakeCounts[k];
+      }
+
+      let hasWeakness = false;
+      for (let i = 1; i <= 9; i++) {
+        html += `<tr><td class="row-header">${i}</td>`;
+        for (let j = 1; j <= 9; j++) {
+          const count = mistakeCounts[mistakeKey(i, j)] || 0;
+          if (count > 0) hasWeakness = true;
+          const bg = heatmapColor(count, maxMistakes);
+          const answer = i * j;
+          const label = formatProblem(i, j);
+          let title;
+          if (count > 0) {
+            const wrong = topWrongAnswer(mistakeKey(i, j));
+            title = `${label} = ${answer}（${count}回まちがえ${wrong !== null ? ` / よく${wrong}とこたえる` : ''}）`;
+          } else {
+            title = `${label} = ${answer}`;
+          }
+          html += `<td style="background:${bg}" title="${title}">${answer}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</table>';
+      container.innerHTML = html;
+
+      // d. 苦手がない時はボタン無効化
+      const weakBtn = document.getElementById('weakOnlyBtn');
+      weakBtn.disabled = !hasWeakness;
+      weakBtn.style.opacity = hasWeakness ? '1' : '0.5';
+      weakBtn.style.cursor = hasWeakness ? 'pointer' : 'not-allowed';
+    }
+
+    function heatmapColor(count, max) {
+      if (count === 0 || max === 0) return '#e8f5e9';
+      const ratio = count / Math.max(max, 1);
+      if (ratio <= 0.33) return '#fff9c4';
+      if (ratio <= 0.66) return '#ffcc80';
+      return '#ef9a9a';
+    }
+
+    // ===== リセット =====
+    function resetMistakeData() {
+      try {
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.mistakes);
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.wrongAnswers);
+      } catch (e) {}
+      alert('リセットがかんりょうしました！');
+      location.reload();
+    }
+
+    // ===== d. 苦手だけ練習開始 =====
+    function startWeakOnlyPractice() {
+      // 苦手な問題が無い場合は何もしない（ボタン側でdisabledにしてある）
+      const hasWeak = Object.values(mistakeCounts).some(c => c > 0);
+      if (!hasWeak) {
+        alert('にがてなもんだいはまだありません！');
+        return;
+      }
+      heatmapReturnTo = null;
+      startNormalGame(CONFIG.WEAK_PRACTICE_TIME, { weakOnly: true });
+    }
+
+    // ===== まち描画 =====
+    function drawCity(stage) {
+      const cityDiv = document.getElementById('city');
       if (cityImages[stage]) {
         cityDiv.innerHTML = '';
         const img = document.createElement('img');
@@ -648,12 +1121,8 @@
         cityDiv.appendChild(img);
         return;
       }
-
-      // PNG画像がない場合はSVGで描画
       const w = 700, h = 300;
       let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
-
-      // 空のグラデーション（時間帯で変化）
       svg += `<defs>
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#87CEEB"/>
@@ -661,10 +1130,7 @@
         </linearGradient>
       </defs>`;
       svg += `<rect width="${w}" height="${h}" fill="url(#sky)"/>`;
-
-      // 太陽
       svg += `<circle cx="600" cy="50" r="30" fill="#FFD54F"/>`;
-      // 太陽の光線
       for (let a = 0; a < 360; a += 45) {
         const rad = a * Math.PI / 180;
         const x1 = 600 + Math.cos(rad) * 35;
@@ -673,56 +1139,31 @@
         const y2 = 50 + Math.sin(rad) * 48;
         svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#FFD54F" stroke-width="3" stroke-linecap="round"/>`;
       }
-
-      // 雲（ステージ2+）
-      if (stage >= 2) {
-        svg += drawCloud(100, 40, 1);
-        svg += drawCloud(350, 60, 0.8);
-      }
-      if (stage >= 5) {
-        svg += drawCloud(500, 30, 0.7);
-      }
-
-      // 地面
+      if (stage >= 2) { svg += drawCloud(100, 40, 1); svg += drawCloud(350, 60, 0.8); }
+      if (stage >= 5) { svg += drawCloud(500, 30, 0.7); }
       svg += `<rect x="0" y="230" width="${w}" height="70" fill="#81C784"/>`;
-      // 道路
       svg += `<rect x="0" y="250" width="${w}" height="25" fill="#9E9E9E"/>`;
       svg += `<line x1="0" y1="262" x2="${w}" y2="262" stroke="#FFF" stroke-width="2" stroke-dasharray="20,15"/>`;
 
-      // 建物をステージに応じて追加
       const buildings = [
-        // stage 1: 小さな家
         { x: 300, w: 50, h: 50, color: '#FFAB91', roof: '#E64A19', type: 'house' },
-        // stage 2: もう一軒
         { x: 100, w: 55, h: 55, color: '#CE93D8', roof: '#7B1FA2', type: 'house' },
-        // stage 3: お店
         { x: 480, w: 60, h: 60, color: '#80DEEA', roof: '#00838F', type: 'shop' },
-        // stage 4: アパート
         { x: 200, w: 50, h: 80, color: '#FFCC80', roof: '#EF6C00', type: 'apartment' },
-        // stage 5: 学校
         { x: 560, w: 80, h: 70, color: '#A5D6A7', roof: '#2E7D32', type: 'school' },
-        // stage 6: ビル
         { x: 50, w: 45, h: 100, color: '#90CAF9', roof: '#1565C0', type: 'building' },
-        // stage 7: 公園の木
         { x: 400, w: 0, h: 0, color: '#66BB6A', roof: '#33691E', type: 'park' },
-        // stage 8: 大きなビル
         { x: 140, w: 50, h: 120, color: '#B0BEC5', roof: '#37474F', type: 'building' },
-        // stage 9: タワー
         { x: 340, w: 35, h: 140, color: '#EF9A9A', roof: '#C62828', type: 'tower' },
-        // stage 10: お城
         { x: 430, w: 90, h: 110, color: '#FFF59D', roof: '#F9A825', type: 'castle' },
       ];
-
       for (let i = 0; i < Math.min(stage, buildings.length); i++) {
         svg += drawBuilding(buildings[i]);
       }
-
-      // 木を散りばめる（ステージに応じて）
       if (stage >= 3) svg += drawTree(20, 230);
       if (stage >= 4) svg += drawTree(250, 228);
       if (stage >= 6) svg += drawTree(510, 232);
       if (stage >= 8) svg += drawTree(650, 228);
-
       svg += `</svg>`;
       cityDiv.innerHTML = svg;
     }
@@ -746,15 +1187,11 @@
     function drawBuilding(b) {
       const groundY = 250;
       let svg = '';
-
       if (b.type === 'house') {
         const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
-        // 屋根
         svg += `<polygon points="${bx-5},${by} ${bx+bw/2},${by-25} ${bx+bw+5},${by}" fill="${b.roof}"/>`;
-        // ドア
         svg += `<rect x="${bx+bw/2-7}" y="${by+bh-22}" width="14" height="22" fill="#5D4037" rx="2"/>`;
-        // 窓
         svg += `<rect x="${bx+6}" y="${by+10}" width="12" height="12" fill="#BBDEFB" rx="1"/>`;
         svg += `<rect x="${bx+bw-18}" y="${by+10}" width="12" height="12" fill="#BBDEFB" rx="1"/>`;
       }
@@ -762,17 +1199,14 @@
         const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="12" fill="${b.roof}"/>`;
-        // 看板
         svg += `<rect x="${bx+5}" y="${by+14}" width="${bw-10}" height="14" fill="white" rx="2"/>`;
         svg += `<text x="${bx+bw/2}" y="${by+25}" text-anchor="middle" font-size="9" fill="${b.roof}">SHOP</text>`;
-        // 大きな窓
         svg += `<rect x="${bx+5}" y="${by+32}" width="${bw-10}" height="20" fill="#BBDEFB" rx="1"/>`;
       }
       else if (b.type === 'apartment' || b.type === 'building') {
         const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="6" fill="${b.roof}"/>`;
-        // 窓を並べる
         const rows = Math.floor((bh - 15) / 18);
         const cols = Math.floor((bw - 10) / 16);
         for (let r = 0; r < rows; r++) {
@@ -787,21 +1221,16 @@
         const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="8" fill="${b.roof}"/>`;
-        // 時計
         svg += `<circle cx="${bx+bw/2}" cy="${by+20}" r="10" fill="white" stroke="${b.roof}" stroke-width="2"/>`;
         svg += `<line x1="${bx+bw/2}" y1="${by+20}" x2="${bx+bw/2}" y2="${by+13}" stroke="${b.roof}" stroke-width="2"/>`;
         svg += `<line x1="${bx+bw/2}" y1="${by+20}" x2="${bx+bw/2+5}" y2="${by+20}" stroke="${b.roof}" stroke-width="1.5"/>`;
-        // 窓
         for (let c = 0; c < 3; c++) {
           svg += `<rect x="${bx+10+c*24}" y="${by+38}" width="16" height="14" fill="#BBDEFB" rx="1"/>`;
         }
-        // 入口
         svg += `<rect x="${bx+bw/2-10}" y="${by+bh-25}" width="20" height="25" fill="#5D4037" rx="2"/>`;
       }
       else if (b.type === 'park') {
-        // 公園: ブランコとベンチ
         const px = b.x;
-        // ブランコ
         svg += `<line x1="${px}" y1="${groundY-40}" x2="${px+30}" y2="${groundY-40}" stroke="#795548" stroke-width="3"/>`;
         svg += `<line x1="${px}" y1="${groundY}" x2="${px}" y2="${groundY-40}" stroke="#795548" stroke-width="2"/>`;
         svg += `<line x1="${px+30}" y1="${groundY}" x2="${px+30}" y2="${groundY-40}" stroke="#795548" stroke-width="2"/>`;
@@ -809,7 +1238,6 @@
         svg += `<line x1="${px+20}" y1="${groundY-40}" x2="${px+22}" y2="${groundY-15}" stroke="#666" stroke-width="1.5"/>`;
         svg += `<rect x="${px+4}" y="${groundY-16}" width="10" height="3" fill="#EF6C00" rx="1"/>`;
         svg += `<rect x="${px+18}" y="${groundY-16}" width="10" height="3" fill="#EF6C00" rx="1"/>`;
-        // 花
         svg += drawFlower(px + 45, groundY - 5);
         svg += drawFlower(px + 55, groundY - 3);
         svg += drawFlower(px + 50, groundY - 8);
@@ -817,10 +1245,8 @@
       else if (b.type === 'tower') {
         const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
         svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${b.color}"/>`;
-        // アンテナ
         svg += `<line x1="${bx+bw/2}" y1="${by}" x2="${bx+bw/2}" y2="${by-20}" stroke="#666" stroke-width="2"/>`;
         svg += `<circle cx="${bx+bw/2}" cy="${by-22}" r="3" fill="red"/>`;
-        // 窓
         const rows = Math.floor((bh - 10) / 16);
         for (let r = 0; r < rows; r++) {
           svg += `<rect x="${bx+8}" y="${by+8+r*16}" width="${bw-16}" height="9" fill="#BBDEFB" rx="1"/>`;
@@ -829,163 +1255,95 @@
       else if (b.type === 'castle') {
         const bx = b.x, by = groundY - b.h, bw = b.w, bh = b.h;
         svg += `<rect x="${bx}" y="${by+15}" width="${bw}" height="${bh-15}" fill="${b.color}"/>`;
-        // 城壁のギザギザ
         const merlonW = bw / 7;
         for (let m = 0; m < 7; m += 2) {
           svg += `<rect x="${bx+m*merlonW}" y="${by}" width="${merlonW}" height="20" fill="${b.color}"/>`;
         }
-        // 塔
         svg += `<rect x="${bx-8}" y="${by-10}" width="20" height="${bh+10}" fill="${b.roof}" opacity="0.7"/>`;
         svg += `<rect x="${bx+bw-12}" y="${by-10}" width="20" height="${bh+10}" fill="${b.roof}" opacity="0.7"/>`;
-        // 旗
         svg += `<line x1="${bx+bw/2}" y1="${by}" x2="${bx+bw/2}" y2="${by-25}" stroke="#666" stroke-width="2"/>`;
         svg += `<polygon points="${bx+bw/2},${by-25} ${bx+bw/2+15},${by-19} ${bx+bw/2},${by-13}" fill="#F44336"/>`;
-        // 入口（アーチ）
         svg += `<rect x="${bx+bw/2-12}" y="${by+bh-35}" width="24" height="35" fill="#5D4037" rx="12"/>`;
-        // 窓
         svg += `<rect x="${bx+15}" y="${by+30}" width="12" height="16" fill="#BBDEFB" rx="6"/>`;
         svg += `<rect x="${bx+bw-27}" y="${by+30}" width="12" height="16" fill="#BBDEFB" rx="6"/>`;
       }
-
       return svg;
     }
 
     function drawFlower(x, y) {
       const colors = ['#E91E63', '#FF9800', '#9C27B0', '#F44336'];
-      const c = colors[Math.floor(Math.random() * colors.length)];
+      const c = colors[Math.abs(Math.round(x) + Math.round(y)) % colors.length];
       return `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>
         <line x1="${x}" y1="${y+3}" x2="${x}" y2="${y+10}" stroke="#4CAF50" stroke-width="1.5"/>`;
     }
 
-    // ===== ゲーム終了 =====
-    function quitGame() {
-      endGame("おつかれさま！");
-    }
-
-    function endGame(message) {
-      gameEnded = true;
-      clearInterval(timerInterval);
-      clearInterval(taTimerInterval);
-      document.getElementById("options").innerHTML = "";
-      document.getElementById("question").style.display = "none";
-      document.getElementById("feedback").textContent = "";
-      document.getElementById("quitBtn").style.display = "none";
-      document.getElementById("gameOver").textContent = message;
-      document.getElementById("gameOver").style.display = "block";
-      document.getElementById("restart").style.display = "inline-block";
-      document.getElementById("showHeatmapBtn").style.display = "inline-block";
-      document.getElementById("resetData").style.display = "inline-block";
-      showMistakes();
-      playSound('fanfare');
-    }
-
-    function showMistakes() {
-      const mistakesDiv = document.getElementById("mistakesList");
-      mistakesDiv.style.display = "block";
-      let html = "<h3>まちがえたもんだい</h3><ul>";
-      const keys = Object.keys(mistakeCounts);
-      if (keys.length === 0) {
-        html += "<li>まちがえたもんだいはありません！</li>";
-      } else {
-        keys.sort((a, b) => mistakeCounts[b] - mistakeCounts[a]).forEach(key => {
-          const [a, b] = key.split(' × ');
-          html += `<li>${key} = ${parseInt(a)*parseInt(b)}（${mistakeCounts[key]}回）</li>`;
-        });
-      }
-      html += "</ul>";
-      mistakesDiv.innerHTML = html;
-    }
-
-    // ===== ヒートマップ =====
-    function showHeatmap() {
-      document.getElementById("modeSelection").style.display = "none";
-      document.getElementById("heatmapSection").style.display = "block";
-      renderHeatmap();
-    }
-
-    function hideHeatmap() {
-      document.getElementById("heatmapSection").style.display = "none";
-      // トップ画面から開いた場合はモード選択に戻る、結果画面から開いた場合は結果画面に戻る
-      if (heatmapFromResult) {
-        heatmapFromResult = false;
-        document.getElementById("gameOver").style.display = "block";
-        document.getElementById("mistakesList").style.display = "block";
-        document.getElementById("restart").style.display = "inline-block";
-        document.getElementById("showHeatmapBtn").style.display = "inline-block";
-        document.getElementById("resetData").style.display = "inline-block";
-        document.getElementById("city").style.display = "block";
-      } else {
-        document.getElementById("modeSelection").style.display = "block";
+    // ===== b. キーボード操作 =====
+    function handleKeydown(e) {
+      // 入力欄にフォーカスがある場合はスキップ
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (state.ended || state.waiting) return;
+      const idx = ['1', '2', '3', '4'].indexOf(e.key);
+      if (idx === -1) return;
+      const buttons = document.querySelectorAll('#options .option');
+      if (buttons[idx] && !buttons[idx].disabled) {
+        buttons[idx].click();
       }
     }
 
-    let heatmapFromResult = false;
+    // ===== g. 初期セットアップ =====
+    function setup() {
+      // ミュート
+      document.getElementById('muteBtn').addEventListener('click', () => setMuted(!isMuted));
+      setMuted(isMuted);
 
-    function showHeatmapFromResult() {
-      heatmapFromResult = true;
-      document.getElementById("gameOver").style.display = "none";
-      document.getElementById("mistakesList").style.display = "none";
-      document.getElementById("restart").style.display = "none";
-      document.getElementById("showHeatmapBtn").style.display = "none";
-      document.getElementById("resetData").style.display = "none";
-      document.getElementById("city").style.display = "none";
-      document.getElementById("heatmapSection").style.display = "block";
-      renderHeatmap();
-    }
+      // モード選択
+      document.querySelectorAll('#timeButtons .mode-btn').forEach(btn => {
+        const t = Number(btn.dataset.time);
+        btn.addEventListener('click', () => startNormalGame(t));
+      });
+      document.getElementById('startTABtn').addEventListener('click', startTimeAttack);
+      document.getElementById('openHeatmapBtn').addEventListener('click', showHeatmap);
 
-    function renderHeatmap() {
-      const container = document.getElementById("heatmapContainer");
-      let html = '<table class="heatmap-table"><tr><th>×</th>';
-      for (let j = 1; j <= 9; j++) html += `<th>${j}</th>`;
-      html += '</tr>';
+      // o. リトライ設定
+      const retryEl = document.getElementById('retryOption');
+      retryEl.checked = safeLoad(CONFIG.STORAGE_KEYS.retry, false) === true;
+      state.retryOnWrong = retryEl.checked;
+      document.getElementById('retryLabel').style.display = 'inline-block';
+      retryEl.addEventListener('change', e => {
+        state.retryOnWrong = e.target.checked;
+        safeSave(CONFIG.STORAGE_KEYS.retry, state.retryOnWrong);
+      });
 
-      // 最大間違い回数を取得
-      let maxMistakes = 0;
-      for (const key in mistakeCounts) {
-        if (mistakeCounts[key] > maxMistakes) maxMistakes = mistakeCounts[key];
-      }
+      // 結果画面
+      document.getElementById('quitBtn').addEventListener('click', quitGame);
+      document.getElementById('restart').addEventListener('click', () => location.reload());
+      document.getElementById('showHeatmapBtn').addEventListener('click', showHeatmapFromResult);
+      document.getElementById('resetData').addEventListener('click', resetMistakeData);
 
-      for (let i = 1; i <= 9; i++) {
-        html += `<tr><td class="row-header">${i}</td>`;
-        for (let j = 1; j <= 9; j++) {
-          const key = `${i} × ${j}`;
-          const count = mistakeCounts[key] || 0;
-          const bg = heatmapColor(count, maxMistakes);
-          const answer = i * j;
-          const title = count > 0 ? `${key} = ${answer}（${count}回まちがえ）` : `${key} = ${answer}`;
-          html += `<td style="background:${bg}" title="${title}">${answer}</td>`;
+      // ヒートマップ
+      document.getElementById('hideHeatmapBtn').addEventListener('click', hideHeatmap);
+      document.getElementById('weakOnlyBtn').addEventListener('click', startWeakOnlyPractice);
+
+      // キーボード
+      document.addEventListener('keydown', handleKeydown);
+
+      // タッチでフォーカス残留を防止
+      document.addEventListener('touchend', () => {
+        if (document.activeElement && document.activeElement.classList.contains('option')) {
+          document.activeElement.blur();
         }
-        html += '</tr>';
-      }
-      html += '</table>';
-      container.innerHTML = html;
+      });
+
+      refreshBestRecordDisplay();
+      drawCity(state.cityStage);
     }
 
-    function heatmapColor(count, max) {
-      if (count === 0) return '#e8f5e9';
-      if (max === 0) return '#e8f5e9';
-      const ratio = count / Math.max(max, 1);
-      if (ratio <= 0.33) return '#fff9c4';
-      if (ratio <= 0.66) return '#ffcc80';
-      return '#ef9a9a';
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setup);
+    } else {
+      setup();
     }
-
-    // ===== リセット =====
-    function resetMistakeData() {
-      localStorage.removeItem("mistakeCounts");
-      alert("リセットがかんりょうしました！");
-      location.reload();
-    }
-
-    // ===== 初期表示：ステージ1の街を描画 =====
-    drawCity(1);
-
-    // タッチ操作の改善
-    document.addEventListener("touchend", function() {
-      if (document.activeElement && document.activeElement.classList.contains("option")) {
-        document.activeElement.blur();
-      }
-    });
   </script>
 </body>
 </html>
