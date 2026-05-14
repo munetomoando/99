@@ -633,12 +633,21 @@
 
     // ===== PNG画像プリロード =====
     const cityImages = {};
+    // 各ステージのPNG読み込み状態。'loaded' | 'failed' | undefined（読み込み中）
+    const cityImageStatus = {};
     (function preloadCityImages() {
       for (let s = 1; s <= CONFIG.MAX_STAGE; s++) {
         const img = new Image();
         const stage = s;
-        img.onload = function() { cityImages[stage] = img; if (state.cityStage === stage) drawCity(stage); };
-        img.onerror = function() { /* PNG無し → SVGフォールバック */ };
+        img.onload = function() {
+          cityImages[stage] = img;
+          cityImageStatus[stage] = 'loaded';
+          if (state.cityStage === stage) drawCity(stage);
+        };
+        img.onerror = function() {
+          cityImageStatus[stage] = 'failed';
+          if (state.cityStage === stage) drawCity(stage);
+        };
         img.src = `${String(s).padStart(3, '0')}.png`;
       }
     })();
@@ -1113,6 +1122,7 @@
     // ===== まち描画 =====
     function drawCity(stage) {
       const cityDiv = document.getElementById('city');
+      // PNGが読み込み済みなら使う
       if (cityImages[stage]) {
         cityDiv.innerHTML = '';
         const img = document.createElement('img');
@@ -1121,6 +1131,13 @@
         cityDiv.appendChild(img);
         return;
       }
+      // PNGがまだ読み込み中なら何も描かない（onloadで再描画される）
+      // SVGフォールバックはPNG失敗が確定した場合のみ
+      if (cityImageStatus[stage] !== 'failed') {
+        cityDiv.innerHTML = '';
+        return;
+      }
+      // ===== SVGフォールバック =====
       const w = 700, h = 300;
       let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
       svg += `<defs>
